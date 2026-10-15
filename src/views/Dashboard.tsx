@@ -42,21 +42,39 @@ export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant
   const viewSpend = useMemo(() => (excludeTax ? spend.filter((t) => t.categoryId !== TAX_CATEGORY) : spend), [spend, excludeTax])
   const catSpend = useMemo(() => viewSpend.filter((t) => t.month === month), [viewSpend, month])
   const cats = useMemo(() => byCategory(catSpend), [catSpend])
-  const merchants = useMemo(() => byMerchant(catSpend), [catSpend])
   const deltas = useMemo(() => categoryDeltas(viewSpend, month), [viewSpend, month])
-  // カテゴリ別支出で選択中のカテゴリで月別支出を絞り込む（その月に支出がなくても選択は維持）
-  const trendCategory = focus && data.catMap.has(focus) ? focus : null
+  // カテゴリ別支出で選択中のカテゴリで月別支出・店舗別支出を絞り込む（その月に支出がなくても選択は維持）
+  const focusCategory = focus && data.catMap.has(focus) ? focus : null
   const trend = useMemo(() => {
     const end = months.indexOf(month)
     const shown = range === 0 ? months.slice(0, end + 1) : months.slice(Math.max(0, end + 1 - range), end + 1)
-    return monthlyTotals(trendCategory ? viewSpend.filter((t) => t.categoryId === trendCategory) : viewSpend, shown)
-  }, [viewSpend, months, month, range, trendCategory])
-  const trendColor = !trendCategory ? undefined : trendCategory === UNCATEGORIZED ? '#9aa39b' : data.catMap.get(trendCategory)?.color
+    return monthlyTotals(focusCategory ? viewSpend.filter((t) => t.categoryId === focusCategory) : viewSpend, shown)
+  }, [viewSpend, months, month, range, focusCategory])
+  const merchants = useMemo(
+    () => byMerchant(focusCategory ? catSpend.filter((t) => t.categoryId === focusCategory) : catSpend),
+    [catSpend, focusCategory],
+  )
+  const trendColor = !focusCategory ? undefined : focusCategory === UNCATEGORIZED ? '#9aa39b' : data.catMap.get(focusCategory)?.color
 
   const catName = (id: string) => data.catMap.get(id)?.name ?? '未分類'
   const catColor = (id: string) => data.catMap.get(id)?.color ?? '#c4cbc1'
   const focused = cats.some((c) => c.key === focus) ? focus : null
   const prevLabel = monthLabel(shiftMonth(month, -1))
+
+  const focusChip = focusCategory && (
+    <span className="flex min-w-0 items-center gap-1.5 rounded-md bg-mini py-0.5 pr-1 pl-2 text-[11px] motion-safe:animate-fade">
+      <span className="dot" style={{ background: catColor(focusCategory) }} />
+      <span className="truncate">{catName(focusCategory)}</span>
+      <button
+        className="border-0 bg-transparent px-1 text-faint hover:text-brand"
+        onClick={() => setFocus(null)}
+        aria-label="カテゴリの絞り込みを解除"
+        title="絞り込みを解除"
+      >
+        ×
+      </button>
+    </span>
+  )
 
   const kpis = [
     {
@@ -126,20 +144,7 @@ export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant
           <div className="cardhead">
             <div className="flex min-w-0 items-center gap-2">
               <h2 className="shrink-0">月別支出</h2>
-              {trendCategory && (
-                <span className="flex min-w-0 items-center gap-1.5 rounded-md bg-mini py-0.5 pr-1 pl-2 text-[11px] motion-safe:animate-fade">
-                  <span className="dot" style={{ background: catColor(trendCategory) }} />
-                  <span className="truncate">{catName(trendCategory)}</span>
-                  <button
-                    className="border-0 bg-transparent px-1 text-faint hover:text-brand"
-                    onClick={() => setFocus(null)}
-                    aria-label="カテゴリの絞り込みを解除"
-                    title="絞り込みを解除"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
+              {focusChip}
             </div>
             <div className="flex shrink-0 gap-1" role="group" aria-label="表示期間">
               {RANGES.map((r) => (
@@ -160,7 +165,7 @@ export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant
           <p className="caption mt-2">
             {trend.length > 0 &&
               `${monthLabel(trend[0].month)}〜${monthLabel(trend[trend.length - 1].month)} ・ ${
-                trendCategory ? `${catName(trendCategory)}のみ ・ ` : 'カテゴリを選択すると絞り込み ・ '
+                focusCategory ? `${catName(focusCategory)}のみ ・ ` : 'カテゴリを選択すると絞り込み ・ '
               }点を選択するとその月を表示`}
           </p>
         </div>
@@ -169,12 +174,15 @@ export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant
       <div className="grid gap-[14px] md:grid-cols-[1.05fr_.95fr]">
         <div className="card">
           <div className="cardhead">
-            <h2>店舗別支出</h2>
-            <button className="caption border-0 bg-transparent p-0 hover:text-brand" onClick={onMoreMerchants}>
+            <div className="flex min-w-0 items-center gap-2">
+              <h2 className="shrink-0">店舗別支出</h2>
+              {focusChip}
+            </div>
+            <button className="caption shrink-0 border-0 bg-transparent p-0 hover:text-brand" onClick={onMoreMerchants}>
               上位5店舗 ・ すべて表示 →
             </button>
           </div>
-          {merchants.length === 0 && <NoRows text="この月の支出はありません" />}
+          {merchants.length === 0 && <NoRows text={focusCategory ? `この月の${catName(focusCategory)}の支出はありません` : 'この月の支出はありません'} />}
           {merchants.slice(0, 5).map((m) => (
             <button
               key={m.key}
@@ -187,7 +195,7 @@ export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant
               <div className="min-w-0 flex-1">
                 <b className="block truncate text-xs">{m.key}</b>
                 <p className="mt-1 mb-0 text-[10px] text-[#819087]">
-                  {catName(m.categoryId)} ・ {m.count}回 ・ {pct(m.share)}
+                  {focusCategory ? `${m.count}回 ・ カテゴリ内 ${pct(m.share)}` : `${catName(m.categoryId)} ・ ${m.count}回 ・ ${pct(m.share)}`}
                 </p>
               </div>
               <div className="text-right text-xs font-bold tabular-nums">
