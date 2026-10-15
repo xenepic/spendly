@@ -39,8 +39,8 @@ export function MonthlyChart({ data, selected, onSelect, height = 190, color = '
         >
           <defs>
             <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-              <stop stopColor="#78ac86" stopOpacity={0.25} />
-              <stop offset="1" stopColor="#78ac86" stopOpacity={0} />
+              <stop stopColor={color === '#397d59' ? '#78ac86' : color} stopOpacity={0.22} />
+              <stop offset="1" stopColor={color === '#397d59' ? '#78ac86' : color} stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid vertical={false} stroke="#e8eee7" />

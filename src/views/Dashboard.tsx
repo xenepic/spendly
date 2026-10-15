@@ -9,6 +9,7 @@ import { CategoryDonut } from '../components/CategoryDonut'
 import { MonthlyChart } from '../components/MonthlyChart'
 import { Num } from '../components/Num'
 import { NoRows } from '../components/Empty'
+import { UNCATEGORIZED } from '../lib/categories'
 import { TAX_CATEGORY, TaxToggle, useIncludeTax } from '../components/TaxToggle'
 
 interface Props {
@@ -42,11 +43,14 @@ export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant
   const cats = useMemo(() => byCategory(catSpend), [catSpend])
   const merchants = useMemo(() => byMerchant(monthSpend), [monthSpend])
   const deltas = useMemo(() => categoryDeltas(spend, month), [spend, month])
+  // カテゴリ別支出で選択中のカテゴリで月別支出を絞り込む（その月に支出がなくても選択は維持）
+  const trendCategory = focus && data.catMap.has(focus) ? focus : null
   const trend = useMemo(() => {
     const end = months.indexOf(month)
     const shown = range === 0 ? months.slice(0, end + 1) : months.slice(Math.max(0, end + 1 - range), end + 1)
-    return monthlyTotals(spend, shown)
-  }, [spend, months, month, range])
+    return monthlyTotals(trendCategory ? spend.filter((t) => t.categoryId === trendCategory) : spend, shown)
+  }, [spend, months, month, range, trendCategory])
+  const trendColor = !trendCategory ? undefined : trendCategory === UNCATEGORIZED ? '#9aa39b' : data.catMap.get(trendCategory)?.color
 
   const catName = (id: string) => data.catMap.get(id)?.name ?? '未分類'
   const catColor = (id: string) => data.catMap.get(id)?.color ?? '#c4cbc1'
@@ -108,8 +112,24 @@ export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant
         </div>
         <div className="card">
           <div className="cardhead">
-            <h2>月別支出</h2>
-            <div className="flex gap-1" role="group" aria-label="表示期間">
+            <div className="flex min-w-0 items-center gap-2">
+              <h2 className="shrink-0">月別支出</h2>
+              {trendCategory && (
+                <span className="flex min-w-0 items-center gap-1.5 rounded-md bg-mini py-0.5 pr-1 pl-2 text-[11px] motion-safe:animate-fade">
+                  <span className="dot" style={{ background: catColor(trendCategory) }} />
+                  <span className="truncate">{catName(trendCategory)}</span>
+                  <button
+                    className="border-0 bg-transparent px-1 text-faint hover:text-brand"
+                    onClick={() => setFocus(null)}
+                    aria-label="カテゴリの絞り込みを解除"
+                    title="絞り込みを解除"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+            </div>
+            <div className="flex shrink-0 gap-1" role="group" aria-label="表示期間">
               {RANGES.map((r) => (
                 <button
                   key={r.id}
@@ -124,9 +144,12 @@ export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant
               ))}
             </div>
           </div>
-          <MonthlyChart data={trend} selected={month} onSelect={onMonth} />
+          <MonthlyChart data={trend} selected={month} onSelect={onMonth} color={trendColor} />
           <p className="caption mt-2">
-            {trend.length > 0 && `${monthLabel(trend[0].month)}〜${monthLabel(trend[trend.length - 1].month)} ・ 点を選択するとその月を表示`}
+            {trend.length > 0 &&
+              `${monthLabel(trend[0].month)}〜${monthLabel(trend[trend.length - 1].month)} ・ ${
+                trendCategory ? `${catName(trendCategory)}のみ ・ ` : 'カテゴリを選択すると絞り込み ・ '
+              }点を選択するとその月を表示`}
           </p>
         </div>
       </div>
