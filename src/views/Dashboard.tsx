@@ -9,7 +9,7 @@ import { CategoryDonut } from '../components/CategoryDonut'
 import { MonthlyChart } from '../components/MonthlyChart'
 import { Num } from '../components/Num'
 import { NoRows } from '../components/Empty'
-import { UNCATEGORIZED } from '../lib/categories'
+import { DEFAULT_EMOJI, UNCATEGORIZED } from '../lib/categories'
 import { TAX_CATEGORY, TaxToggle, useIncludeTax } from '../components/TaxToggle'
 
 interface Props {
@@ -57,6 +57,7 @@ export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant
 
   const catName = (id: string) => data.catMap.get(id)?.name ?? '未分類'
   const catColor = (id: string) => data.catMap.get(id)?.color ?? '#c4cbc1'
+  const catEmoji = (id: string) => data.catMap.get(id)?.emoji || DEFAULT_EMOJI
   const focused = cats.some((c) => c.key === focus) ? focus : null
   const prevLabel = monthLabel(shiftMonth(month, -1))
 
@@ -187,8 +188,13 @@ export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant
                 onClick={() => onMerchant(m.key)}
                 className="flex w-full items-center gap-[10px] rounded-lg border-0 bg-transparent px-[3px] py-[9px] text-left transition-colors duration-150 hover:bg-hover-soft"
               >
-                <div className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] bg-avatar-bg font-bold text-avatar-text">
-                  {[...m.key][0]}
+                <div
+                  className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] text-[17px] leading-none"
+                  style={{ background: `color-mix(in srgb, ${catColor(m.categoryId)} 16%, transparent)` }}
+                  title={catName(m.categoryId)}
+                  aria-hidden
+                >
+                  {catEmoji(m.categoryId)}
                 </div>
                 <div className="min-w-0 flex-1">
                   <b className="block truncate text-xs">{m.key}</b>

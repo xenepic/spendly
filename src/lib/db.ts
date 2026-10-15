@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import { DEFAULT_CATEGORIES, MERGED_CATEGORIES } from './categories'
+import { DEFAULT_CATEGORIES, DEFAULT_EMOJI, MERGED_CATEGORIES } from './categories'
 import type { Category, ImportHistory, Merchant, MerchantRule, Transaction, TxOverride } from './types'
 
 export class SpendlyDB extends Dexie {
@@ -57,6 +57,13 @@ export class SpendlyDB extends Dexie {
           ...(old && cur.color === old.color ? { color: d.color } : {}),
         })
       }
+    })
+    // v5: カテゴリに絵文字を追加（初期カテゴリは既定の絵文字、追加したカテゴリは汎用の絵文字）
+    this.version(5).upgrade(async (tx) => {
+      const defaults = new Map(DEFAULT_CATEGORIES.map((c) => [c.id, c.emoji]))
+      await tx.table('categories').toCollection().modify((c: Category) => {
+        if (!c.emoji) c.emoji = defaults.get(c.id) ?? DEFAULT_EMOJI
+      })
     })
     this.on('populate', (tx) => {
       tx.table('categories').bulkAdd(DEFAULT_CATEGORIES)

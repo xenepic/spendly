@@ -44,6 +44,8 @@ export interface Category {
   id: string
   name: string
   color: string
+  /** 店舗一覧などでカテゴリを表す絵文字（v5 で追加。古いバックアップには無いことがある） */
+  emoji?: string
   order: number
 }
 
