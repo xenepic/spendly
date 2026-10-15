@@ -134,7 +134,6 @@ export function App() {
               onMonth={setMonth}
               onCategory={(categoryId) => showTransactions({ categoryId })}
               onMerchant={(merchant) => showTransactions({ merchant })}
-              onMoreMerchants={() => navigate('analysis')}
             />
           ) : view === 'analysis' ? (
             <Analysis

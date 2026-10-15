@@ -19,7 +19,6 @@ interface Props {
   onMonth: (m: string) => void
   onCategory: (categoryId: string) => void
   onMerchant: (merchant: string) => void
-  onMoreMerchants: () => void
 }
 
 const RANGES = [
@@ -28,7 +27,7 @@ const RANGES = [
   { id: 0, label: '全期間' },
 ] as const
 
-export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant, onMoreMerchants }: Props) {
+export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant }: Props) {
   const [focus, setFocus] = useState<string | null>(null)
   const [range, setRange] = usePersistentState<number>('dashboard.range', 6)
   const spend = useMemo(() => data.txs.filter(isSpending), [data.txs])
@@ -178,37 +177,37 @@ export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant
               <h2 className="shrink-0">店舗別支出</h2>
               {focusChip}
             </div>
-            <button className="caption shrink-0 border-0 bg-transparent p-0 hover:text-brand" onClick={onMoreMerchants}>
-              上位5店舗 ・ すべて表示 →
-            </button>
+            <span className="caption shrink-0">{merchants.length > 0 && `${merchants.length}店舗 ・ 金額順`}</span>
           </div>
           {merchants.length === 0 && <NoRows text={focusCategory ? `この月の${catName(focusCategory)}の支出はありません` : 'この月の支出はありません'} />}
-          {merchants.slice(0, 5).map((m) => (
-            <button
-              key={m.key}
-              onClick={() => onMerchant(m.key)}
-              className="flex w-full items-center gap-[10px] rounded-lg border-0 bg-transparent px-[3px] py-[9px] text-left transition-colors duration-150 hover:bg-hover-soft"
-            >
-              <div className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] bg-avatar-bg font-bold text-avatar-text">
-                {[...m.key][0]}
-              </div>
-              <div className="min-w-0 flex-1">
-                <b className="block truncate text-xs">{m.key}</b>
-                <p className="mt-1 mb-0 text-[10px] text-[#819087]">
-                  {focusCategory ? `${m.count}回 ・ カテゴリ内 ${pct(m.share)}` : `${catName(m.categoryId)} ・ ${m.count}回 ・ ${pct(m.share)}`}
-                </p>
-              </div>
-              <div className="text-right text-xs font-bold tabular-nums">
-                {yen(m.amount)}
-                <div className="mt-[7px] h-1 w-20 overflow-hidden rounded-[3px] bg-track">
-                  <span
-                    className="block h-full bg-accent-soft transition-[width] duration-300 ease-out"
-                    style={{ width: `${(m.amount / merchants[0].amount) * 100}%` }}
-                  />
+          <div className="-mr-1 pr-1 md:max-h-[560px] md:overflow-y-auto">
+            {merchants.map((m) => (
+              <button
+                key={m.key}
+                onClick={() => onMerchant(m.key)}
+                className="flex w-full items-center gap-[10px] rounded-lg border-0 bg-transparent px-[3px] py-[9px] text-left transition-colors duration-150 hover:bg-hover-soft"
+              >
+                <div className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] bg-avatar-bg font-bold text-avatar-text">
+                  {[...m.key][0]}
                 </div>
-              </div>
-            </button>
-          ))}
+                <div className="min-w-0 flex-1">
+                  <b className="block truncate text-xs">{m.key}</b>
+                  <p className="mt-1 mb-0 text-[10px] text-[#819087]">
+                    {focusCategory ? `${m.count}回 ・ カテゴリ内 ${pct(m.share)}` : `${catName(m.categoryId)} ・ ${m.count}回 ・ ${pct(m.share)}`}
+                  </p>
+                </div>
+                <div className="text-right text-xs font-bold tabular-nums">
+                  {yen(m.amount)}
+                  <div className="mt-[7px] h-1 w-20 overflow-hidden rounded-[3px] bg-track">
+                    <span
+                      className="block h-full bg-accent-soft transition-[width] duration-300 ease-out"
+                      style={{ width: `${(m.amount / merchants[0].amount) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="card">
