@@ -56,11 +56,16 @@ export interface Merchant {
 }
 
 /** 取引先名 → 正規化店舗名 の統合ルール（ユーザー定義） */
+/**
+ * ユーザー定義ルール。取引先名（または正規化後の店舗名）がパターンに該当したとき、
+ * merchant があれば店舗名を統合し、categoryId があればカテゴリを設定する（少なくとも一方を持つ）。
+ */
 export interface MerchantRule {
   id: string
   pattern: string
   match: 'contains' | 'exact'
-  merchant: string
+  merchant?: string
+  categoryId?: string
   createdAt: string
 }
 

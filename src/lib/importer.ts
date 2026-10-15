@@ -25,7 +25,7 @@ export async function importCsv(db: SpendlyDB, bytes: ArrayBuffer | Uint8Array, 
       if (t.kind !== 'payment' && t.kind !== 'unknown') continue
       const r = resolveMerchant(t.payee, rules)
       if (!newMerchants.has(r.merchant)) {
-        newMerchants.set(r.merchant, { name: r.merchant, categoryId: r.builtinCategory ?? UNCATEGORIZED, manual: false })
+        newMerchants.set(r.merchant, { name: r.merchant, categoryId: r.ruleCategory ?? r.builtinCategory ?? UNCATEGORIZED, manual: false })
       }
     }
     const known = await db.merchants.bulkGet([...newMerchants.keys()])

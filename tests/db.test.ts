@@ -289,3 +289,58 @@ describe('カテゴリ統合（v4）', () => {
     await db4.delete()
   })
 })
+
+describe('カテゴリのルールと一括設定', () => {
+  it('キーワードのカテゴリルールは組み込みルールより優先、店舗の手動設定よりは劣後', async () => {
+    await importCsv(db, legacy, 'a.csv')
+    const now = new Date().toISOString()
+    // セブンイレブン（組み込み: コンビニ）をルールで「その他」に
+    await db.merchantRules.add({ id: 'r1', pattern: 'セブン', match: 'contains', categoryId: 'other', createdAt: now })
+    let all = await load()
+    expect(all.filter((t) => t.merchant === 'セブンイレブン').every((t) => t.categoryId === 'other')).toBe(true)
+    // 店舗名は変わらない
+    expect(all.some((t) => t.merchant === 'セブンイレブン')).toBe(true)
+    await db.merchants.put({ name: 'セブンイレブン', categoryId: 'dining', manual: true })
+    all = await load()
+    expect(all.filter((t) => t.merchant === 'セブンイレブン').every((t) => t.categoryId === 'dining')).toBe(true)
+  })
+
+  it('統合後の店舗名に対してもカテゴリルールが適用される', async () => {
+    await importCsv(db, legacy, 'a.csv')
+    const now = new Date().toISOString()
+    await db.merchantRules.bulkAdd([
+      { id: 'n', pattern: '新鮮激安市場', match: 'contains', merchant: '近所の店', createdAt: now },
+      { id: 'c', pattern: '近所の店', match: 'exact', categoryId: 'daily', createdAt: now },
+    ])
+    const t = (await load()).find((x) => x.payee === '新鮮激安市場！')!
+    expect(t).toMatchObject({ merchant: '近所の店', categoryId: 'daily' })
+  })
+
+  it('複数店舗を一括設定し、元に戻せる', async () => {
+    const { setMerchantsCategory, restoreMerchants } = await import('../src/lib/classify')
+    await importCsv(db, legacy, 'a.csv')
+    await db.merchants.put({ name: 'マツモトキヨシ', categoryId: 'other', manual: true })
+    const before = await db.merchants.toArray()
+    const snap = await setMerchantsCategory(db, ['セブンイレブン', 'マツモトキヨシ', '存在しない店'], 'hobby')
+    let all = await load()
+    expect(all.filter((t) => ['セブンイレブン', 'マツモトキヨシ'].includes(t.merchant)).every((t) => t.categoryId === 'hobby')).toBe(true)
+    await restoreMerchants(db, snap)
+    expect(await db.merchants.toArray()).toEqual(before)
+
+    await setMerchantsCategory(db, ['マツモトキヨシ'], null)
+    all = await load()
+    expect(all.find((t) => t.merchant === 'マツモトキヨシ')?.categoryId).toBe('drugstore')
+  })
+
+  it('カテゴリを削除すると、そのカテゴリのルールも外れる', async () => {
+    const { deleteCategory } = await import('../src/lib/classify')
+    await db.categories.add({ id: 'x', name: '独自', color: '#000', order: 50 })
+    await db.merchantRules.bulkAdd([
+      { id: 'a', pattern: 'A', match: 'contains', categoryId: 'x', createdAt: '' },
+      { id: 'b', pattern: 'B', match: 'contains', categoryId: 'x', merchant: 'Bの店', createdAt: '' },
+    ])
+    await deleteCategory(db, 'x')
+    expect(await db.merchantRules.get('a')).toBeUndefined()
+    expect(await db.merchantRules.get('b')).toEqual({ id: 'b', pattern: 'B', match: 'contains', merchant: 'Bの店', createdAt: '' })
+  })
+})

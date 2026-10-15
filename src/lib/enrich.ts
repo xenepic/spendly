@@ -6,7 +6,7 @@ import type { EnrichedTx, Merchant, MerchantRule, Transaction, TxOverride } from
 /**
  * 元の取引に分類情報（正規化店舗名・カテゴリ・手動上書き）を付加する。
  * 元データは変更せず、ルールや分類を変えるたびにここから再計算する。
- * カテゴリの優先順位: 取引単位の手動変更 > 店舗の手動設定 > 組み込みルール > 店舗の初期値 > 未分類
+ * カテゴリの優先順位: 取引単位の手動変更 > 店舗の手動設定 > ユーザーのカテゴリルール > 組み込みルール > 店舗の初期値 > 未分類
  */
 export function enrich(
   txs: Transaction[],
@@ -31,7 +31,8 @@ export function enrich(
     const m = mMap.get(r.merchant)
     const merchantCategory = m?.manual
       ? valid(m.categoryId)
-      : (valid(r.builtinCategory) ??
+      : (valid(r.ruleCategory) ??
+        valid(r.builtinCategory) ??
         valid(builtinCategoryOf(r.merchant)) ??
         // 店舗名から判定できない請求書払い（自治体・事務局など）は税金・公共料金とする
         (t.description.includes('請求書') ? valid('tax') : undefined) ??

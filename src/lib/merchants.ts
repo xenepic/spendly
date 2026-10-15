@@ -132,18 +132,19 @@ export interface Resolved {
   merchant: string
   /** 組み込みルールから推定したカテゴリ（なければ undefined） */
   builtinCategory?: string
+  /** ユーザーのカテゴリルールで決まったカテゴリ（組み込みルールより優先） */
+  ruleCategory?: string
 }
 
-/** 取引先名から正規化した店舗名と推定カテゴリを求める。元の取引先名は変更しない */
-export function resolveMerchant(payee: string, userRules: MerchantRule[] = []): Resolved {
+const ruleMatches = (r: MerchantRule, keys: string[]) => {
+  const p = matchKey(r.pattern)
+  return !!p && keys.some((k) => (r.match === 'exact' ? k === p : k.includes(p)))
+}
+
+function resolveName(payee: string, userRules: MerchantRule[]): Omit<Resolved, 'ruleCategory'> {
   const key = matchKey(payee)
-  for (const r of sortRules(userRules)) {
-    const p = matchKey(r.pattern)
-    if (!p) continue
-    if (r.match === 'exact' ? key === p : key.includes(p)) {
-      return { merchant: r.merchant, builtinCategory: builtinCategoryOf(r.merchant) }
-    }
-  }
+  const nameRule = sortRules(userRules).find((r) => r.merchant && ruleMatches(r, [key]))
+  if (nameRule?.merchant) return { merchant: nameRule.merchant, builtinCategory: builtinCategoryOf(nameRule.merchant) }
   const { brand, store } = splitPayee(payee)
   if (store && FACILITY.test(matchKey(brand))) {
     const r = findRule(store)
@@ -153,6 +154,29 @@ export function resolveMerchant(payee: string, userRules: MerchantRule[] = []): 
   if (byBrand) return { merchant: byBrand.merchant ?? brand, builtinCategory: byBrand.category }
   const byStore = store ? findRule(store) : undefined
   return byStore ? { merchant: brand, builtinCategory: byStore.category } : { merchant: brand }
+}
+
+/** 取引先名から正規化した店舗名と推定カテゴリを求める。元の取引先名は変更しない */
+export function resolveMerchant(payee: string, userRules: MerchantRule[] = []): Resolved {
+  const resolved = resolveName(payee, userRules)
+  // カテゴリルールは元の取引先名と統合後の店舗名のどちらに該当しても適用する
+  const keys = [matchKey(payee), matchKey(resolved.merchant)]
+  const catRule = sortRules(userRules).find((r) => r.categoryId && ruleMatches(r, keys))
+  return catRule ? { ...resolved, ruleCategory: catRule.categoryId } : resolved
+}
+
+/** パターンに該当する店舗名（統合後）の一覧 */
+export function merchantsMatching(
+  pattern: string,
+  match: MerchantRule['match'],
+  pairs: { payee: string; merchant: string }[],
+): string[] {
+  const rule = { id: '', pattern, match, createdAt: '' }
+  const out = new Set<string>()
+  for (const { payee, merchant } of pairs) {
+    if (ruleMatches(rule, [matchKey(payee), matchKey(merchant)])) out.add(merchant)
+  }
+  return [...out]
 }
 
 /** ユーザールールの評価順: 完全一致 → 部分一致、同じ条件では新しいものを優先 */
