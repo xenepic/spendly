@@ -33,15 +33,15 @@ export function Analysis({ data, month, months, scope, onScope, onCategory, onMe
   const [merchantSort, setMerchantSort] = usePersistentState<MerchantSort>('analysis.merchantSort', 'amount')
   const [trendCat, setTrendCat] = usePersistentState<string>('analysis.trendCategory', '')
 
-  const allSpend = useMemo(() => data.txs.filter(isSpending), [data.txs])
+  // 「税金・公共料金を含める」がオフなら、この画面の集計すべてから税金を除く
+  const [includeTax, setIncludeTax] = useIncludeTax()
+  const paid = useMemo(() => data.txs.filter(isSpending), [data.txs])
+  const hasTax = useMemo(() => paid.some((t) => t.categoryId === TAX_CATEGORY), [paid])
+  const excludeTax = !includeTax && hasTax
+  const allSpend = useMemo(() => (excludeTax ? paid.filter((t) => t.categoryId !== TAX_CATEGORY) : paid), [paid, excludeTax])
   const spend = useMemo(() => (scope === 'month' ? allSpend.filter((t) => t.month === month) : allSpend), [allSpend, scope, month])
   const total = sum(spend)
-  const [includeTax, setIncludeTax] = useIncludeTax()
-  const taxAmount = sum(spend.filter((t) => t.categoryId === TAX_CATEGORY))
-  const cats = useMemo(
-    () => byCategory(includeTax ? spend : spend.filter((t) => t.categoryId !== TAX_CATEGORY)),
-    [spend, includeTax],
-  )
+  const cats = useMemo(() => byCategory(spend), [spend])
   const merchants = useMemo(() => {
     const rows = byMerchant(spend)
     return merchantSort === 'amount' ? rows : [...rows].sort((a, b) => b[merchantSort] - a[merchantSort])
@@ -71,7 +71,13 @@ export function Analysis({ data, month, months, scope, onScope, onCategory, onMe
         ))}
         <span className="caption ml-1">
           {scopeLabel} ・ {spend.length}回 ・ {yen(total)}
+          {excludeTax && '（税金・公共料金を除く）'}
         </span>
+        {hasTax && (
+          <span className="ml-auto">
+            <TaxToggle checked={includeTax} onChange={setIncludeTax} />
+          </span>
+        )}
       </div>
 
       <div className="mb-[14px] grid grid-cols-2 gap-3">
@@ -99,9 +105,8 @@ export function Analysis({ data, month, months, scope, onScope, onCategory, onMe
         <div className="card">
           <div className="cardhead">
             <h2>カテゴリ別支出</h2>
-            {taxAmount > 0 ? <TaxToggle checked={includeTax} onChange={setIncludeTax} /> : <span className="caption">選択すると取引一覧に移動</span>}
+            <span className="caption">選択すると取引一覧に移動</span>
           </div>
-          {!includeTax && taxAmount > 0 && <p className="caption -mt-2 mb-2">税金・公共料金 {yen(taxAmount)} を除いた内訳です（構成比も税金を除いて算出）</p>}
           {cats.length ? (
             <Bars
               items={cats.map((c) => ({

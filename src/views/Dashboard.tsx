@@ -34,22 +34,23 @@ export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant
   const spend = useMemo(() => data.txs.filter(isSpending), [data.txs])
   const monthSpend = useMemo(() => spend.filter((t) => t.month === month), [spend, month])
   const summary = useMemo(() => monthSummary(spend, month, new Date(), months), [spend, month, months])
+  // 「税金・公共料金を含める」がオフなら、集計カード以外（内訳・店舗別・月別・前月比較）から税金を除く
   const [includeTax, setIncludeTax] = useIncludeTax()
+  const hasTax = useMemo(() => spend.some((t) => t.categoryId === TAX_CATEGORY), [spend])
   const taxAmount = sum(monthSpend.filter((t) => t.categoryId === TAX_CATEGORY))
-  const catSpend = useMemo(
-    () => (includeTax ? monthSpend : monthSpend.filter((t) => t.categoryId !== TAX_CATEGORY)),
-    [monthSpend, includeTax],
-  )
+  const excludeTax = !includeTax && hasTax
+  const viewSpend = useMemo(() => (excludeTax ? spend.filter((t) => t.categoryId !== TAX_CATEGORY) : spend), [spend, excludeTax])
+  const catSpend = useMemo(() => viewSpend.filter((t) => t.month === month), [viewSpend, month])
   const cats = useMemo(() => byCategory(catSpend), [catSpend])
-  const merchants = useMemo(() => byMerchant(monthSpend), [monthSpend])
-  const deltas = useMemo(() => categoryDeltas(spend, month), [spend, month])
+  const merchants = useMemo(() => byMerchant(catSpend), [catSpend])
+  const deltas = useMemo(() => categoryDeltas(viewSpend, month), [viewSpend, month])
   // カテゴリ別支出で選択中のカテゴリで月別支出を絞り込む（その月に支出がなくても選択は維持）
   const trendCategory = focus && data.catMap.has(focus) ? focus : null
   const trend = useMemo(() => {
     const end = months.indexOf(month)
     const shown = range === 0 ? months.slice(0, end + 1) : months.slice(Math.max(0, end + 1 - range), end + 1)
-    return monthlyTotals(trendCategory ? spend.filter((t) => t.categoryId === trendCategory) : spend, shown)
-  }, [spend, months, month, range, trendCategory])
+    return monthlyTotals(trendCategory ? viewSpend.filter((t) => t.categoryId === trendCategory) : viewSpend, shown)
+  }, [viewSpend, months, month, range, trendCategory])
   const trendColor = !trendCategory ? undefined : trendCategory === UNCATEGORIZED ? '#9aa39b' : data.catMap.get(trendCategory)?.color
 
   const catName = (id: string) => data.catMap.get(id)?.name ?? '未分類'
@@ -88,18 +89,29 @@ export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant
         ))}
       </div>
 
+      {hasTax && (
+        <div className="mb-[14px] flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+          {excludeTax && (
+            <span className="caption motion-safe:animate-fade">
+              以下は税金・公共料金{taxAmount > 0 && `（この月 ${yen(taxAmount)}）`}を除いて表示中 ・ 上の集計カードは税金を含む
+            </span>
+          )}
+          <TaxToggle checked={includeTax} onChange={setIncludeTax} />
+        </div>
+      )}
+
       <div className="mb-[14px] grid gap-[14px] md:grid-cols-[1.05fr_.95fr]">
         <div className="card">
           <div className="cardhead">
             <h2>カテゴリ別支出</h2>
-            {taxAmount > 0 ? <TaxToggle checked={includeTax} onChange={setIncludeTax} /> : <span className="caption">構成比</span>}
+            <span className="caption">{excludeTax ? '構成比（税金除く）' : '構成比'}</span>
           </div>
           {cats.length ? (
             <CategoryDonut
               rows={cats}
               catMap={data.catMap}
               total={sum(catSpend)}
-              totalLabel={includeTax || taxAmount === 0 ? '総支出' : '税金除く'}
+              totalLabel={excludeTax ? '税金除く' : '総支出'}
               selected={focused}
               onSelect={setFocus}
               onShowTransactions={onCategory}
@@ -108,7 +120,7 @@ export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant
           ) : (
             <NoRows text="この月の支出はありません" />
           )}
-          {!includeTax && taxAmount > 0 && <p className="caption mt-3 mb-0">税金・公共料金 {yen(taxAmount)} を除いた内訳です</p>}
+
         </div>
         <div className="card">
           <div className="cardhead">
