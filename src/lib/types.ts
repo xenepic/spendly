@@ -1,6 +1,7 @@
 /** 取引種別。payment のみが消費支出として集計される */
 export type TxKind =
   | 'payment' // 支払い（消費支出）
+  | 'bill' // 請求書払い・税金・年金などの公的支払い
   | 'charge' // 残高チャージ
   | 'transfer_out' // 送金
   | 'transfer_in' // 受け取り
@@ -28,7 +29,7 @@ export interface Transaction {
   /** 正の整数（円） */
   amount: number
   direction: 'out' | 'in'
-  /** CSV から自動判定した種別 */
+  /** 取り込み時に CSV から自動判定した種別（表示・集計では再判定した autoKind を使う） */
   kind: TxKind
   /** CSV 上の取引内容（例: 支払い / 支払い完了） */
   description: string
@@ -89,6 +90,8 @@ export interface ImportHistory {
 
 /** 集計用に分類情報を付加した取引 */
 export interface EnrichedTx extends Transaction {
+  /** 現在の判定ルールで元データから再判定した種別 */
+  autoKind: TxKind
   effectiveKind: TxKind
   merchant: string
   categoryId: string

@@ -20,6 +20,12 @@ export class SpendlyDB extends Dexie {
       txOverrides: 'txId',
       importHistories: 'id, importedAt',
     })
+    // v2: 実データに合わせて追加した初期カテゴリ（食品・お土産／旅行・宿泊）を既存DBにも追加
+    this.version(2).upgrade(async (tx) => {
+      const table = tx.table('categories')
+      const existing = new Set((await table.toArray()).map((c: { id: string }) => c.id))
+      await table.bulkAdd(DEFAULT_CATEGORIES.filter((c) => !existing.has(c.id)))
+    })
     this.on('populate', (tx) => {
       tx.table('categories').bulkAdd(DEFAULT_CATEGORIES)
     })

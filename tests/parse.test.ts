@@ -147,3 +147,52 @@ describe('店舗名の正規化', () => {
     expect(r.merchant).toBe('ローソンストア100')
   })
 })
+
+describe('公式CSVの実際の取引内容', () => {
+  const header = '取引日,出金金額（円）,入金金額（円）,海外出金金額,通貨,変換レート（円）,利用国,取引内容,取引先,取引方法,支払い区分,利用者,取引番号'
+  const row = (desc: string, payee: string, out: string, inn: string, no: string) =>
+    `2026/10/14 18:25:44,${out},${inn},-,-,-,-,${desc},${payee},PayPay残高,-,-,${no}`
+  const r = parsePayPayCsv(
+    [
+      header,
+      row('請求書払い', '京都市', '"12,470"', '-', '1'),
+      row('支払い', '国税（消費税及地方消費税）', '"152,600"', '-', '2'),
+      row('支払い', '日本年金機構(国民年金保険料)', '"17,510"', '-', '3'),
+      row('送った金額', 'テスト', '"3,000"', '-', '4'),
+      row('受け取った金額', 'テスト', '-', '"4,000"', '5'),
+      row('投資', 'PayPayポイント運用', '42', '-', '6'),
+      row('期間限定ポイントの期限切れ', '-', '360', '-', '7'),
+      row('ポイント、残高の獲得', 'ローソン', '-', '3', '8'),
+      row('支払い', 'ローソン - 西京極佃田', '300', '-', '8'),
+    ].join('\n'),
+  )
+  it('種別を判定する（秒付きの日時にも対応）', () => {
+    expect(r.errors).toEqual([])
+    expect(r.rows.map((t) => t.kind)).toEqual([
+      'bill', 'bill', 'bill', 'transfer_out', 'transfer_in', 'investment', 'point', 'point', 'payment',
+    ])
+  })
+  it('支払いとポイント獲得が同じ取引番号でも別取引', () => {
+    expect(new Set(r.rows.filter((t) => t.txNumber === '8').map((t) => t.id)).size).toBe(2)
+  })
+})
+
+describe('公式CSVの「ブランド - 店舗」形式', () => {
+  it.each([
+    ['万代 - 万代五条西小路店', '万代', 'supermarket'],
+    ['万代 - 万代吉祥院店', '万代', 'supermarket'],
+    ['鳥貴族 - 鳥貴族　深草店', '鳥貴族', 'dining'],
+    ['ローソン - ＨＢ　阪急梅田３階東', 'ローソン', 'convenience'],
+    ['京都ポルタ（地下街） - 一風堂', '一風堂', 'dining'],
+    ['関西国際空港 - KATE リムジンバス チケットカウンター', 'KATE リムジンバス チケットカウンター', 'transport'],
+    ['JR-PLUS - Ｋｉｏｓｋ品川幹線南改札内', 'Kiosk品川幹線南改札内', 'convenience'],
+    ['ZUND - ラー麺ずんどう屋　四条烏丸店', 'ZUND', 'dining'],
+    ['大起水産回転寿司　京都伏見店 - 大起水産回転寿司　京都伏見店', '大起水産回転寿司 京都伏見店', 'dining'],
+    ['お酒の美術館阪急西院駅前店 - お酒の美術館阪急西院駅前店', 'お酒の美術館', 'dining'],
+    ['JRA 即PAT', 'JRA 即PAT', 'hobby'],
+    ['A－プライス - A－プライス　西京極店', 'A-プライス', 'supermarket'],
+    ['キャンドゥ　イオンモール京都五条 - キャンドゥ　イオンモール京都五条', 'キャンドゥ イオンモール京都五条', 'daily'],
+  ])('%s → %s / %s', (payee, merchant, category) => {
+    expect(resolveMerchant(payee)).toEqual({ merchant, builtinCategory: category })
+  })
+})

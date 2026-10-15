@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { availableMonths, monthLabel } from './lib/analytics'
 import type { TxKind } from './lib/types'
 import { useSpendlyData } from './hooks/useData'
 import { useImporter } from './hooks/useImporter'
+import { usePersistentState } from './hooks/usePersistentState'
 import { EMPTY_FILTER, VIEW_TITLE, type TxFilter, type View } from './state'
 import { MobileNav, Sidebar } from './components/Nav'
 import { EmptyState } from './components/Empty'
@@ -17,10 +18,11 @@ const SUBTITLE: Partial<Record<View, string>> = { dashboard: '支出集計', ana
 export function App() {
   const data = useSpendlyData()
   const importer = useImporter()
-  const [view, setView] = useState<View>('dashboard')
-  const [month, setMonth] = useState<string | null>(null)
-  const [filter, setFilter] = useState<TxFilter>(EMPTY_FILTER)
-  const [analysisScope, setAnalysisScope] = useState<'month' | 'all'>('month')
+  const [view, setView] = usePersistentState<View>('view', 'dashboard')
+  const [month, setMonth] = usePersistentState<string | null>('month', null)
+  const [storedFilter, setFilter] = usePersistentState<TxFilter>('txFilter', EMPTY_FILTER)
+  const filter = { ...EMPTY_FILTER, ...storedFilter }
+  const [analysisScope, setAnalysisScope] = usePersistentState<'month' | 'all'>('analysisScope', 'month')
   const fileRef = useRef<HTMLInputElement>(null)
   const mainRef = useRef<HTMLElement>(null)
 
@@ -28,12 +30,13 @@ export function App() {
   const latest = months[months.length - 1] ?? null
   const current = month && months.includes(month) ? month : latest
 
-  // 新しいデータを取り込んだら最新月を表示
-  const prevLatest = useRef<string | null>(null)
+  // 新しい月のデータを取り込んだら最新月を表示（起動時は前回選択した月を維持）
+  const prevLatest = useRef<string | null | undefined>(undefined)
   useEffect(() => {
-    if (latest && latest !== prevLatest.current) setMonth(latest)
+    if (data.loading) return
+    if (prevLatest.current !== undefined && latest && latest !== prevLatest.current) setMonth(latest)
     prevLatest.current = latest
-  }, [latest])
+  }, [data.loading, latest, setMonth])
 
   const navigate = (v: View) => {
     setView(v)

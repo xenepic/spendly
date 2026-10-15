@@ -1,5 +1,6 @@
 import { UNCATEGORIZED } from './categories'
 import { builtinCategoryOf, resolveMerchant } from './merchants'
+import { classifyTx } from './csv/parsePayPay'
 import type { EnrichedTx, Merchant, MerchantRule, Transaction, TxOverride } from './types'
 
 /**
@@ -32,9 +33,11 @@ export function enrich(
       ? valid(m.categoryId)
       : (valid(r.builtinCategory) ?? valid(builtinCategoryOf(r.merchant)) ?? valid(m?.categoryId))
     const overridden = valid(ov?.categoryId)
+    const autoKind = classifyTx(t)
     return {
       ...t,
-      effectiveKind: ov?.kind ?? t.kind,
+      autoKind,
+      effectiveKind: ov?.kind ?? autoKind,
       merchant: r.merchant,
       categoryId: overridden ?? merchantCategory ?? UNCATEGORIZED,
       categoryOverridden: overridden != null,

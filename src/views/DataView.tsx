@@ -161,7 +161,7 @@ export function DataView({ data, busy, results, onFiles, onKind }: Props) {
               </button>
             ))
           )}
-          <p className="caption mt-3">支出の集計には「支払い」のみを含みます。チャージ・送金・返金・ポイント・ポイント運用は含みません。</p>
+          <p className="caption mt-3">支出の集計には「支払い」のみを含みます。請求書払い・税金（税金・年金・公共料金など）、チャージ・送金・返金・ポイント・ポイント運用は含みません。取引一覧で種別を変更すると集計に反映されます。</p>
         </div>
 
         <div className="card">

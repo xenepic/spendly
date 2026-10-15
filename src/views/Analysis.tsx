@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import {
   byAmountBand, byCategory, byMerchant, byWeekday, isSpending, median, monthLabel, monthlyTotals, sum,
 } from '../lib/analytics'
 import { pct, yen } from '../lib/format'
 import type { SpendlyData } from '../hooks/useData'
+import { usePersistentState } from '../hooks/usePersistentState'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { Bars } from '../components/Bars'
 import { MonthlyChart } from '../components/MonthlyChart'
@@ -27,9 +28,9 @@ type MerchantSort = 'amount' | 'count' | 'avg'
 
 export function Analysis({ data, month, months, scope, onScope, onCategory, onMerchant, onBand, onMonth }: Props) {
   const reduced = useReducedMotion()
-  const [showAllMerchants, setShowAllMerchants] = useState(false)
-  const [merchantSort, setMerchantSort] = useState<MerchantSort>('amount')
-  const [trendCat, setTrendCat] = useState<string>('')
+  const [showAllMerchants, setShowAllMerchants] = usePersistentState('analysis.showAllMerchants', false)
+  const [merchantSort, setMerchantSort] = usePersistentState<MerchantSort>('analysis.merchantSort', 'amount')
+  const [trendCat, setTrendCat] = usePersistentState<string>('analysis.trendCategory', '')
 
   const allSpend = useMemo(() => data.txs.filter(isSpending), [data.txs])
   const spend = useMemo(() => (scope === 'month' ? allSpend.filter((t) => t.month === month) : allSpend), [allSpend, scope, month])

@@ -5,6 +5,7 @@ import { db, newId } from '../lib/db'
 import { yen } from '../lib/format'
 import { builtinCategoryOf, matchKey, resolveMerchant } from '../lib/merchants'
 import type { SpendlyData } from '../hooks/useData'
+import { usePersistentState } from '../hooks/usePersistentState'
 import { NoRows } from '../components/Empty'
 
 type Tab = 'merchants' | 'categories' | 'rules'
@@ -16,7 +17,7 @@ interface Props {
 }
 
 export function Manage({ data, onMerchant, onUnknown }: Props) {
-  const [tab, setTab] = useState<Tab>('merchants')
+  const [tab, setTab] = usePersistentState<Tab>('manage.tab', 'merchants')
   const spend = useMemo(() => data.txs.filter(isSpending), [data.txs])
   const unknownCount = data.txs.filter((t) => t.effectiveKind === 'unknown').length
   const uncategorized = spend.filter((t) => t.categoryId === UNCATEGORIZED)
@@ -62,8 +63,8 @@ export function Manage({ data, onMerchant, onUnknown }: Props) {
 }
 
 function MerchantsTab({ data, onMerchant }: { data: SpendlyData; onMerchant: (name: string) => void }) {
-  const [query, setQuery] = useState('')
-  const [onlyUncat, setOnlyUncat] = useState(false)
+  const [query, setQuery] = usePersistentState('manage.merchantQuery', '')
+  const [onlyUncat, setOnlyUncat] = usePersistentState('manage.onlyUncategorized', false)
   const [renaming, setRenaming] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
   const [limit, setLimit] = useState(50)

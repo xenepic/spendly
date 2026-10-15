@@ -177,3 +177,30 @@ describe('バックアップ', () => {
     expect(await db.transactions.count()).toBe(13)
   })
 })
+
+describe('既存データへの反映', () => {
+  it('保存済みの種別が古くても、表示時に現在のルールで再判定する', async () => {
+    await importCsv(db, official, 'b.csv')
+    const t = (await db.transactions.toArray())[0]
+    await db.transactions.put({ ...t, id: 'old', kind: 'unknown', description: '請求書払い', payee: '京都市' })
+    const e = (await load()).find((x) => x.id === 'old')!
+    expect(e.autoKind).toBe('bill')
+    expect(isSpending(e)).toBe(false)
+  })
+
+  it('v1のDBを開くと、追加された初期カテゴリが補われる', async () => {
+    const { default: Dexie } = await import('dexie')
+    const old = new Dexie('migrate-test')
+    old.version(1).stores({
+      transactions: 'id, importId, month, occurredAt, kind, payee', merchants: 'name, categoryId', categories: 'id, order',
+      merchantRules: 'id, merchant', txOverrides: 'txId', importHistories: 'id, importedAt',
+    })
+    await old.table('categories').bulkAdd([{ id: 'supermarket', name: '食料品', color: '#000', order: 0 }])
+    old.close()
+    const upgraded = new SpendlyDB('migrate-test')
+    const cats = await upgraded.categories.toArray()
+    expect(cats.find((c) => c.id === 'supermarket')?.name).toBe('食料品')
+    expect(cats.map((c) => c.id)).toEqual(expect.arrayContaining(['food', 'travel']))
+    await upgraded.delete()
+  })
+})

@@ -3,8 +3,10 @@ import { AMOUNT_BANDS, inBand, monthLabel, sum } from '../lib/analytics'
 import { KIND_LABEL, KIND_ORDER } from '../lib/categories'
 import { db } from '../lib/db'
 import { dateTime, yen } from '../lib/format'
+import { displayName } from '../lib/merchants'
 import type { EnrichedTx, TxKind } from '../lib/types'
 import type { SpendlyData } from '../hooks/useData'
+import { usePersistentState } from '../hooks/usePersistentState'
 import { EMPTY_FILTER, type KindFilter, type TxFilter } from '../state'
 
 interface Props {
@@ -33,7 +35,7 @@ async function setCategory(t: EnrichedTx, categoryId: string) {
 
 async function setKind(t: EnrichedTx, kind: TxKind) {
   const cur = await db.txOverrides.get(t.id)
-  if (kind === t.kind) {
+  if (kind === t.autoKind) {
     if (!cur) return
     if (cur.categoryId) await db.txOverrides.put({ txId: t.id, categoryId: cur.categoryId })
     else await db.txOverrides.delete(t.id)
@@ -43,7 +45,7 @@ async function setKind(t: EnrichedTx, kind: TxKind) {
 }
 
 export function Transactions({ data, month, filter, onFilter }: Props) {
-  const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'date', desc: true })
+  const [sort, setSort] = usePersistentState<{ key: SortKey; desc: boolean }>('transactions.sort', { key: 'date', desc: true })
   const [limit, setLimit] = useState(PAGE)
   const [open, setOpen] = useState<string | null>(null)
   const set = (patch: Partial<TxFilter>) => {
@@ -200,7 +202,7 @@ export function Transactions({ data, month, filter, onFilter }: Props) {
             )}
             {rows.slice(0, limit).map((t) => {
               const isPay = t.effectiveKind === 'payment'
-              const sub = [t.payee !== t.merchant ? t.payee : null, t.store].filter(Boolean).join(' ・ ')
+              const sub = [displayName(t.payee) !== t.merchant ? displayName(t.payee) : null, t.store].filter(Boolean).join(' ・ ')
               return (
                 <Fragment key={t.id}>
                   <tr className="transition-colors duration-150 hover:bg-[#fafbf8]">
@@ -241,7 +243,7 @@ export function Transactions({ data, month, filter, onFilter }: Props) {
                       )}
                     </td>
                     <td className="td">
-                      {t.kind === 'unknown' || t.effectiveKind !== t.kind ? (
+                      {t.autoKind === 'unknown' || t.autoKind === 'bill' || t.effectiveKind !== t.autoKind ? (
                         <select
                           className="tag cursor-pointer appearance-none border-0 pr-[7px]"
                           aria-label="取引種別"
@@ -252,7 +254,6 @@ export function Transactions({ data, month, filter, onFilter }: Props) {
                           {KIND_ORDER.map((k) => (
                             <option key={k} value={k}>
                               {KIND_LABEL[k]}
-                              {k === t.kind && t.kind !== 'unknown' ? '（自動判定）' : ''}
                             </option>
                           ))}
                         </select>

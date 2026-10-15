@@ -4,6 +4,7 @@ import {
 } from '../lib/analytics'
 import { pct, signedPct, signedYen, yen } from '../lib/format'
 import type { SpendlyData } from '../hooks/useData'
+import { usePersistentState } from '../hooks/usePersistentState'
 import { CategoryDonut } from '../components/CategoryDonut'
 import { MonthlyChart } from '../components/MonthlyChart'
 import { Num } from '../components/Num'
@@ -27,7 +28,7 @@ const RANGES = [
 
 export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant, onMoreMerchants }: Props) {
   const [focus, setFocus] = useState<string | null>(null)
-  const [range, setRange] = useState<number>(6)
+  const [range, setRange] = usePersistentState<number>('dashboard.range', 6)
   const spend = useMemo(() => data.txs.filter(isSpending), [data.txs])
   const monthSpend = useMemo(() => spend.filter((t) => t.month === month), [spend, month])
   const summary = useMemo(() => monthSummary(spend, month, new Date(), months), [spend, month, months])
