@@ -204,3 +204,29 @@ describe('既存データへの反映', () => {
     await upgraded.delete()
   })
 })
+
+describe('設定のリセット', () => {
+  it('分類設定のみ初期化し、取引データと履歴は残す', async () => {
+    const { resetClassification } = await import('../src/lib/backup')
+    const { DEFAULT_CATEGORIES } = await import('../src/lib/categories')
+    await importCsv(db, legacy, 'a.csv')
+    const tx = (await db.transactions.toArray())[0]
+    await db.merchants.put({ name: 'セブンイレブン', categoryId: 'other', manual: true })
+    await db.txOverrides.put({ txId: tx.id, categoryId: 'dining' })
+    await db.merchantRules.add({ id: 'r', pattern: 'x', match: 'contains', merchant: 'y', createdAt: '' })
+    await db.categories.update('supermarket', { name: '食料品' })
+    await db.categories.add({ id: 'custom', name: '独自', color: '#000', order: 50 })
+
+    await resetClassification(db, DEFAULT_CATEGORIES)
+
+    expect(await db.transactions.count()).toBe(13)
+    expect(await db.importHistories.count()).toBe(1)
+    expect(await db.txOverrides.count()).toBe(0)
+    expect(await db.merchantRules.count()).toBe(0)
+    expect((await db.merchants.toArray()).some((m) => m.manual)).toBe(false)
+    expect((await db.categories.get('supermarket'))?.name).toBe('スーパー')
+    expect(await db.categories.get('custom')).toBeUndefined()
+    const all = await load()
+    expect(all.filter((t) => t.merchant === 'セブンイレブン').every((t) => t.categoryId === 'convenience')).toBe(true)
+  })
+})

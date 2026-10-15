@@ -56,3 +56,15 @@ export async function clearAll(db: SpendlyDB, defaults: unknown[]): Promise<void
     await db.table('categories').bulkAdd(defaults)
   })
 }
+
+/**
+ * 分類設定（店舗カテゴリの手動設定・取引ごとの変更・統合ルール・カテゴリ）を初期状態に戻す。
+ * 取引データと取り込み履歴は残す。
+ */
+export async function resetClassification(db: SpendlyDB, defaults: unknown[]): Promise<void> {
+  const tables = ['merchants', 'categories', 'merchantRules', 'txOverrides'] as const
+  await db.transaction('rw', tables.map((t) => db.table(t)), async () => {
+    for (const t of tables) await db.table(t).clear()
+    await db.table('categories').bulkAdd(defaults)
+  })
+}

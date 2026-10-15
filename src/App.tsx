@@ -68,6 +68,16 @@ export function App() {
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             {needsMonth && hasData && (
+              <div className="flex items-center gap-1" role="group" aria-label="対象月">
+                <button
+                  className="control px-2.5! disabled:opacity-40 disabled:hover:bg-white"
+                  onClick={() => setMonth(months[months.indexOf(current!) - 1])}
+                  disabled={months.indexOf(current!) <= 0}
+                  aria-label="前の月"
+                  title="前の月"
+                >
+                  ‹
+                </button>
               <label className="relative">
                 <span className="sr-only">対象月</span>
                 <select
@@ -83,6 +93,16 @@ export function App() {
                 </select>
                 <span className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-[11px] text-control-text sm:right-3">▾</span>
               </label>
+                <button
+                  className="control px-2.5! disabled:opacity-40 disabled:hover:bg-white"
+                  onClick={() => setMonth(months[months.indexOf(current!) + 1])}
+                  disabled={months.indexOf(current!) >= months.length - 1}
+                  aria-label="次の月"
+                  title="次の月"
+                >
+                  ›
+                </button>
+              </div>
             )}
             <button className="control control-primary" onClick={() => fileRef.current?.click()} disabled={importer.busy}>
               {importer.busy ? '取り込み中…' : '＋ CSV追加'}

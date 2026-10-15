@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
-import { clearAll, exportBackup, restoreBackup } from '../lib/backup'
+import { clearAll, exportBackup, resetClassification, restoreBackup } from '../lib/backup'
+import { clearPersistentState } from '../hooks/usePersistentState'
 import { DEFAULT_CATEGORIES, KIND_LABEL, KIND_ORDER } from '../lib/categories'
 import { db } from '../lib/db'
 import { dateTime, yen } from '../lib/format'
@@ -53,6 +54,25 @@ export function DataView({ data, busy, results, onFiles, onKind }: Props) {
     } catch (e) {
       setMessage({ ok: false, text: `復元できませんでした: ${(e as Error).message}` })
     }
+  }
+
+  const manualCount = data.merchants.filter((m) => m.manual).length + data.overrides.length + data.rules.length
+
+  const resetView = () => {
+    if (!confirm('タブ・絞り込み・並び順・表示中の画面などの選択状態を初期状態に戻します。よろしいですか？')) return
+    clearPersistentState()
+    location.reload()
+  }
+
+  const resetRules = async () => {
+    if (
+      !confirm(
+        '分類設定を初期状態に戻します。\n・店舗ごとのカテゴリの手動設定\n・取引ごとのカテゴリ・種別の変更\n・店舗名の統合ルール\n・カテゴリの追加・名前・色の変更\n\n取引データと取り込み履歴は残ります。元に戻せません。よろしいですか？',
+      )
+    )
+      return
+    await resetClassification(db, DEFAULT_CATEGORIES)
+    setMessage({ ok: true, text: '分類設定を初期状態に戻しました' })
   }
 
   const wipe = async () => {
@@ -196,6 +216,30 @@ export function DataView({ data, busy, results, onFiles, onKind }: Props) {
               {message.text}
             </p>
           )}
+        </div>
+      </div>
+
+      <div className="card mb-[14px]">
+        <div className="cardhead">
+          <h2>設定のリセット</h2>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-[9px] bg-mini p-4">
+            <b className="text-xs">表示設定</b>
+            <p className="caption mt-1 mb-3">タブ・チェック・絞り込み・並び順・表示中の画面と月の選択状態</p>
+            <button className="control" onClick={resetView}>
+              表示設定をリセット
+            </button>
+          </div>
+          <div className="rounded-[9px] bg-mini p-4">
+            <b className="text-xs">分類設定</b>
+            <p className="caption mt-1 mb-3">
+              店舗カテゴリの手動設定・取引ごとの変更・統合ルール・カテゴリ（現在{manualCount}件の手動設定）。取引データは残ります。
+            </p>
+            <button className="control text-up!" onClick={resetRules}>
+              分類設定をリセット
+            </button>
+          </div>
         </div>
       </div>
 

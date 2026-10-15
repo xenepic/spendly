@@ -24,3 +24,12 @@ export function usePersistentState<T>(key: string, fallback: T) {
   const set = useCallback((v: T | ((prev: T) => T)) => setValue(v), [])
   return [value, set] as const
 }
+
+/** 保存した画面の選択状態をすべて消去する（反映には再読み込みが必要） */
+export function clearPersistentState() {
+  try {
+    for (const k of Object.keys(localStorage)) if (k.startsWith(PREFIX)) localStorage.removeItem(k)
+  } catch {
+    // 消去できない環境では何もしない
+  }
+}
