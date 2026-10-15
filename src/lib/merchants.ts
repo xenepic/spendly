@@ -78,8 +78,8 @@ const BUILTIN_RULES: BuiltinRule[] = [
   { re: /すき家|吉野家|松屋|なか卯|ガスト|サイゼリヤ|ドトール|タリーズ|コメダ|天下一品|モスバーガー|ケンタッキー|くら寿司|スシロー|はま寿司|かっぱ寿司|丸亀製麺|ココイチ|coco壱|大戸屋|バーミヤン|ジョナサン|王将|一蘭|一風堂|勝牛|kichiri|杉玉|ルノアール|カプリチョーザ|eggsnthings|ずんどう屋|壱角家|魁力屋|大同門|^hub|ダーツバー/, category: 'dining' },
   // 外食（業態が明確なもの。食品の「水産」「酒」などより優先）
   { re: /寿司|寿し|鮨|ラーメン|ラー麺|らーめん|焼肉|ホルモン|うどん|丼|食堂|レストラン/, category: 'dining' },
-  // 食品・お土産（持ち帰りの菓子・パン・酒・生鮮・土産物）
-  { re: /菓子|製菓|菓匠|パン|ベーカリー|bakery|ブランジェリー|ケーキ|パティスリー|ドーナツ|donuts|六花亭|中村軒|きねや|宝泉堂|満寿屋|タンタシオン|コルネ|リカー|酒店|酒造|酒販|ワイン|ウヰスキー|ウイスキー|ワイナリー|ブルワリー|精肉|肉店|水産|海産|鮮魚|物産|土産|売店|道の駅|茶舗|bento|弁当|佃煮|マネケン|plusta/, category: 'food' },
+  // スーパー・食品（持ち帰りの菓子・パン・酒・生鮮・土産物）
+  { re: /菓子|製菓|菓匠|パン|ベーカリー|bakery|ブランジェリー|ケーキ|パティスリー|ドーナツ|donuts|六花亭|中村軒|きねや|宝泉堂|満寿屋|タンタシオン|コルネ|リカー|酒店|酒造|酒販|ワイン|ウヰスキー|ウイスキー|ワイナリー|ブルワリー|精肉|肉店|水産|海産|鮮魚|物産|土産|売店|道の駅|茶舗|bento|弁当|佃煮|マネケン|plusta/, category: 'supermarket' },
   // 外食（業態キーワード）
   { re: /ラーメン|ラー麺|らーめん|うどん|そば|蕎麦|丼|寿司|寿し|鮨|すし|焼肉|ホルモン|焼鳥|焼き鳥|串|もつ|居酒屋|酒場|食堂|ダイニング|dining|レストラン|トラットリア|ビストロ|食彩|亭|kitchen|キッチン|カフェ|cafe|かふぇ|喫茶|珈琲|coffee|コーヒー|^bar|お好み焼|鉄板|どてっぱん|トンテキ|ピザ|パスタ|料理|海鮮|うに|回転/, category: 'dining' },
   // 交通（「チケット」を含むバス券売所などを趣味より先に判定）
@@ -96,17 +96,17 @@ const BUILTIN_RULES: BuiltinRule[] = [
   { re: /ユニクロ|uniqlo/, merchant: 'ユニクロ', category: 'shopping' },
   { re: /しまむら|asbee|abcマート|ドスパラ|ヨドバシ|ビックカメラ|エディオン|ジョーシン|ケーズデンキ|楽天|panasonic|メガネ|眼鏡|lenslabo|zoff|jins|指輪|ジュエリー|jkplanet|書店|ブックオフ|linegift|松栄堂|ecute/, category: 'shopping' },
   // デジタル
-  { re: /ブックライブ|booklive|dlsite|kindle|steam|apple|google|netflix|spotify|nintendo|playstation|dmm|シーモア|めちゃコミック|コミックdays|コミチ|^note$/, category: 'digital' },
+  { re: /ブックライブ|booklive|dlsite|kindle|steam|apple|google|netflix|spotify|nintendo|playstation|dmm|シーモア|めちゃコミック|コミックdays|コミチ|^note$/, category: 'hobby' },
   // 旅行・宿泊
-  { re: /peach|aviation|航空|全日空|tripcom|じゃらん|楽天トラベル|booking|airbnb|ホテル|hotel|旅館|宿$|の宿|宿泊|民宿|アパサービス|^apa/, category: 'travel' },
+  { re: /peach|aviation|航空|全日空|tripcom|じゃらん|楽天トラベル|booking|airbnb|ホテル|hotel|旅館|宿$|の宿|宿泊|民宿|アパサービス|^apa/, category: 'transport' },
   // 趣味・娯楽・レジャー
   { re: /第一興商|ビッグエコー|カラオケ|ジャンカラ|ラウンドワン|映画|シネマ|ピカデリー|toho|ミュージアム|美術館|博物館|水族館|動物園|写真祭|kyotographie|アソビュー|入場|チケット|パーク$|ホースパーク|の丘|温泉|湯|サウナ|銭湯|^jra|即pat|競馬|ゲーム/, category: 'hobby' },
   // 交通
   { re: /タクシー|交通|^jr(?!a)|鉄道|電鉄|バス$|市バス|高速バス|リムジンバス|^go$|sride|新幹線|駐車場|タイムズ/, category: 'transport' },
   // 医療
-  { re: /病院|医院|クリニック|歯科|調剤/, category: 'medical' },
+  { re: /病院|医院|クリニック|歯科|調剤/, category: 'drugstore' },
   // ふるさと納税
-  { re: /さとふる|ふるさと/, category: 'furusato' },
+  { re: /さとふる|ふるさと/, category: 'other' },
 ]
 
 /**

@@ -131,7 +131,7 @@ describe('店舗名の正規化', () => {
     ['イオンスタイル京都桂川', 'イオン', 'supermarket'],
     ['スギ薬局 四条店', 'スギ薬局', 'drugstore'],
     ['ジェイアール西日本伊勢丹', 'ジェイアール西日本伊勢丹', 'shopping'],
-    ['ＤＬｓｉｔｅ', 'DLsite', 'digital'],
+    ['ＤＬｓｉｔｅ', 'DLsite', 'hobby'],
   ])('%s → %s / %s', (payee, merchant, category) => {
     const r = resolveMerchant(payee)
     expect(r.merchant).toBe(merchant)

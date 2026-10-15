@@ -21,7 +21,7 @@ export function Bars({ items, onSelect }: { items: BarItem[]; onSelect?: (key: s
           onClick={() => onSelect?.(it.key)}
           className="flex w-full items-center gap-3 border-0 bg-transparent px-[2px] py-[11px] text-left transition-colors duration-150 enabled:hover:bg-[#f6f8f4]"
         >
-          <span className="w-[86px] shrink-0 sm:w-[100px]">
+          <span className="w-[92px] shrink-0 sm:w-[124px]">
             <span className="block truncate text-xs">{it.label}</span>
             {it.note && <span className="block text-[10px] text-faint">{it.note}</span>}
           </span>

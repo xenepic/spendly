@@ -4,6 +4,26 @@ import type { Category } from '../lib/types'
 import { pct, yen } from '../lib/format'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { Num } from './Num'
+import { UNCATEGORIZED } from '../lib/categories'
+
+/** この構成比未満のカテゴリはドーナツ上で「その他」にまとめる（凡例には個別に表示） */
+const FOLD_SHARE = 0.03
+const OTHER = 'other'
+
+/** ドーナツの区画: カテゴリの並び順で固定し、少額カテゴリを「その他」にまとめる */
+function donutSlices(rows: GroupRow[], catMap: Map<string, Category>) {
+  const folded = new Set(rows.filter((r) => r.share < FOLD_SHARE && r.key !== UNCATEGORIZED && r.key !== OTHER).map((r) => r.key))
+  const slices = new Map<string, number>()
+  for (const r of rows) {
+    const key = folded.has(r.key) ? OTHER : r.key
+    slices.set(key, (slices.get(key) ?? 0) + r.amount)
+  }
+  const order = (id: string) => catMap.get(id)?.order ?? 50
+  return {
+    folded,
+    slices: [...slices.entries()].map(([key, amount]) => ({ key, amount })).sort((a, b) => order(a.key) - order(b.key)),
+  }
+}
 
 interface Props {
   rows: GroupRow[]
@@ -18,6 +38,8 @@ interface Props {
 export function CategoryDonut({ rows, catMap, total, selected, onSelect, onShowTransactions, topMerchants }: Props) {
   const reduced = useReducedMotion()
   const sel = rows.find((r) => r.key === selected)
+  const { slices, folded } = donutSlices(rows, catMap)
+  const sliceOf = (key: string | null) => (key && folded.has(key) ? OTHER : key)
   const name = (id: string) => catMap.get(id)?.name ?? '未分類'
   const color = (id: string) => catMap.get(id)?.color ?? '#c4cbc1'
   return (
@@ -26,24 +48,25 @@ export function CategoryDonut({ rows, catMap, total, selected, onSelect, onShowT
         <div className="relative h-[143px] w-[143px] shrink-0 sm:h-[178px] sm:w-[178px]">
           <PieChart width={178} height={178} className="origin-top-left scale-[0.8034] sm:scale-100" aria-label="カテゴリ別支出のドーナツグラフ">
             <Pie
-              data={rows}
+              data={slices}
               dataKey="amount"
               nameKey="key"
               innerRadius={64}
               outerRadius={89}
               startAngle={90}
               endAngle={-270}
-              stroke="none"
+              stroke="#fff"
+              strokeWidth={2}
               isAnimationActive={!reduced}
               animationDuration={300}
               onClick={(_, i) => {
-                const k = rows[i]?.key
-                if (k) onSelect(selected === k ? null : k)
+                const k = slices[i]?.key
+                if (k) onSelect(sliceOf(selected) === k ? null : k)
               }}
               style={{ cursor: 'pointer', outline: 'none' }}
             >
-              {rows.map((r) => (
-                <Cell key={r.key} fill={color(r.key)} opacity={selected && selected !== r.key ? 0.35 : 1} />
+              {slices.map((r) => (
+                <Cell key={r.key} fill={color(r.key)} opacity={selected && sliceOf(selected) !== r.key ? 0.35 : 1} />
               ))}
             </Pie>
           </PieChart>
@@ -74,6 +97,11 @@ export function CategoryDonut({ rows, catMap, total, selected, onSelect, onShowT
           ))}
         </div>
       </div>
+      {folded.size > 0 && (
+        <p className="caption mt-3 mb-0">
+          構成比{FOLD_SHARE * 100}%未満の{folded.size}カテゴリ（{[...folded].map(name).join('・')}）はグラフ上で「{name(OTHER)}」にまとめています
+        </p>
+      )}
       {sel && (
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[9px] bg-mini px-4 py-3 text-xs motion-safe:animate-fade">
           <span className="flex items-center gap-2 font-bold">

@@ -217,7 +217,8 @@ describe('既存データへの反映', () => {
     const upgraded = new SpendlyDB('migrate-test')
     const cats = await upgraded.categories.toArray()
     expect(cats.find((c) => c.id === 'supermarket')?.name).toBe('食料品')
-    expect(cats.map((c) => c.id)).toEqual(expect.arrayContaining(['food', 'travel', 'tax']))
+    expect(cats.map((c) => c.id)).toEqual(expect.arrayContaining(['tax', 'other']))
+    expect(cats.map((c) => c.id)).not.toContain('food')
     await upgraded.delete()
   })
 })
@@ -232,6 +233,7 @@ describe('設定のリセット', () => {
     await db.txOverrides.put({ txId: tx.id, categoryId: 'dining' })
     await db.merchantRules.add({ id: 'r', pattern: 'x', match: 'contains', merchant: 'y', createdAt: '' })
     await db.categories.update('supermarket', { name: '食料品' })
+    // 上の update で名前を変えたので、リセット後に初期名へ戻ることを確認する
     await db.categories.add({ id: 'custom', name: '独自', color: '#000', order: 50 })
 
     await resetClassification(db, DEFAULT_CATEGORIES)
@@ -241,9 +243,49 @@ describe('設定のリセット', () => {
     expect(await db.txOverrides.count()).toBe(0)
     expect(await db.merchantRules.count()).toBe(0)
     expect((await db.merchants.toArray()).some((m) => m.manual)).toBe(false)
-    expect((await db.categories.get('supermarket'))?.name).toBe('スーパー')
+    expect((await db.categories.get('supermarket'))?.name).toBe('スーパー・食品')
     expect(await db.categories.get('custom')).toBeUndefined()
     const all = await load()
     expect(all.filter((t) => t.merchant === 'セブンイレブン').every((t) => t.categoryId === 'convenience')).toBe(true)
+  })
+})
+
+describe('カテゴリ統合（v4）', () => {
+  it('v3のDBの手動設定を統合先カテゴリへ移し、未変更の初期カテゴリは新しい名前・色にする', async () => {
+    const { default: Dexie } = await import('dexie')
+    const name = 'migrate-v3'
+    const old = new Dexie(name)
+    old.version(3).stores({
+      transactions: 'id, importId, month, occurredAt, kind, payee', merchants: 'name, categoryId', categories: 'id, order',
+      merchantRules: 'id, merchant', txOverrides: 'txId', importHistories: 'id, importedAt',
+    })
+    await old.table('categories').bulkAdd([
+      { id: 'supermarket', name: 'スーパー', color: '#39785a', order: 0 },
+      { id: 'transport', name: '移動', color: '#b5c8b8', order: 5 },
+      { id: 'food', name: '食品・お土産', color: '#c9a66b', order: 1.5 },
+      { id: 'travel', name: '旅行・宿泊', color: '#6f9ea3', order: 7.5 },
+      { id: 'tax', name: '税金・公共料金', color: '#8c9c86', order: 10.5 },
+      { id: 'custom', name: '独自', color: '#123456', order: 50 },
+    ])
+    await old.table('merchants').bulkAdd([
+      { name: 'A', categoryId: 'food', manual: true },
+      { name: 'B', categoryId: 'custom', manual: true },
+    ])
+    await old.table('txOverrides').bulkAdd([{ txId: 't1', categoryId: 'travel' }, { txId: 't2', kind: 'payment' }])
+    old.close()
+
+    const db4 = new SpendlyDB(name)
+    const cats = new Map((await db4.categories.toArray()).map((c) => [c.id, c]))
+    expect(cats.has('food')).toBe(false)
+    expect(cats.has('travel')).toBe(false)
+    expect(cats.get('supermarket')).toMatchObject({ name: 'スーパー・食品', color: '#2e8058' })
+    // ユーザーが変えた名前は維持し、変えていない色は新しい初期値に
+    expect(cats.get('transport')).toMatchObject({ name: '移動', color: '#3f7fbf' })
+    expect(cats.get('custom')).toMatchObject({ name: '独自', color: '#123456' })
+    expect(await db4.merchants.get('A')).toMatchObject({ categoryId: 'supermarket', manual: true })
+    expect(await db4.merchants.get('B')).toMatchObject({ categoryId: 'custom' })
+    expect(await db4.txOverrides.get('t1')).toMatchObject({ categoryId: 'transport' })
+    expect(await db4.txOverrides.get('t2')).toEqual({ txId: 't2', kind: 'payment' })
+    await db4.delete()
   })
 })
