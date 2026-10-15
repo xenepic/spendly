@@ -69,9 +69,6 @@ export function parseLegacyDate(value: string): string {
   return toLocalIso(m[1], m[2], m[3], m[4], m[5])
 }
 
-/** 税金・年金・公共料金など、消費支出とは分けて扱う公的な支払いの取引先 */
-const PUBLIC_PAYEE = /国税|地方税|都税|道税|府税|県税|市税|区税|町税|村税|税金|納税|年金|保険料|国民健康保険/
-
 /**
  * 公式CSVの取引内容・取引先・入出金方向から取引種別を判定する。
  * 実CSVで確認した取引内容: 支払い / 請求書払い / ポイント、残高の獲得 / 投資 / チャージ /
@@ -89,16 +86,14 @@ export function classifyOfficial(
   if (txNumber.toLowerCase().startsWith('lp-')) return direction === 'in' ? 'point' : 'unknown'
   if (d.includes('期限切れ') || d.includes('失効')) return 'point'
   if (d.includes('投資') || /(ポイント|ボーナス)運用/.test(d + p)) return direction === 'out' ? 'investment' : 'unknown'
-  if (d.includes('請求書')) return direction === 'out' ? 'bill' : 'unknown'
+  // 請求書払い（税金・公共料金など）は支払いとして支出に含める
+  if (d.includes('請求書')) return direction === 'out' ? 'payment' : 'unknown'
   if (d.includes('チャージ')) return direction === 'in' ? 'charge' : 'unknown'
   if (d.includes('受け取')) return direction === 'in' ? 'transfer_in' : 'unknown'
   if (/送金|送っ|送る/.test(d)) return direction === 'out' ? 'transfer_out' : 'unknown'
   if (d.includes('出金')) return direction === 'out' ? 'withdrawal' : 'unknown'
   if (/ポイント|獲得|付与|キャッシュバック/.test(d)) return direction === 'in' ? 'point' : 'unknown'
-  if (d.includes('支払')) {
-    if (direction !== 'out') return 'unknown'
-    return PUBLIC_PAYEE.test(p) ? 'bill' : 'payment'
-  }
+  if (d.includes('支払')) return direction === 'out' ? 'payment' : 'unknown'
   return 'unknown'
 }
 
@@ -107,11 +102,10 @@ export function classifyLegacy(status: string, title: string, direction: 'out' |
   const s = nfkc(status)
   const t = nfkc(title)
   if (s.includes('返金')) return direction === 'in' ? 'refund' : 'unknown'
-  if (s.includes('請求書')) return direction === 'out' ? 'bill' : 'unknown'
+  if (s.includes('請求書')) return direction === 'out' ? 'payment' : 'unknown'
   if (s.startsWith('支払い')) {
     if (/(ポイント|ボーナス)運用/.test(t)) return direction === 'out' ? 'investment' : 'unknown'
-    if (direction !== 'out' || !t.endsWith('に支払い')) return 'unknown'
-    return PUBLIC_PAYEE.test(t) ? 'bill' : 'payment'
+    return direction === 'out' && t.endsWith('に支払い') ? 'payment' : 'unknown'
   }
   if (s.startsWith('チャージ')) return direction === 'in' && t.includes('チャージ') ? 'charge' : 'unknown'
   if (s.startsWith('送金')) return direction === 'out' ? 'transfer_out' : 'unknown'

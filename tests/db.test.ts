@@ -184,8 +184,25 @@ describe('既存データへの反映', () => {
     const t = (await db.transactions.toArray())[0]
     await db.transactions.put({ ...t, id: 'old', kind: 'unknown', description: '請求書払い', payee: '京都市' })
     const e = (await load()).find((x) => x.id === 'old')!
-    expect(e.autoKind).toBe('bill')
-    expect(isSpending(e)).toBe(false)
+    expect(e.autoKind).toBe('payment')
+    expect(isSpending(e)).toBe(true)
+  })
+
+  it('税金・請求書払いは支出に含め、税金・公共料金カテゴリに分類する', async () => {
+    await importCsv(db, official, 'b.csv')
+    const t = (await db.transactions.toArray())[0]
+    await db.transactions.bulkPut([
+      { ...t, id: 'tax1', description: '支払い', payee: '国税（消費税及地方消費税）' },
+      { ...t, id: 'tax2', description: '請求書払い', payee: '京都市' },
+      { ...t, id: 'tax3', description: '請求書払い', payee: '日本年金機構(国民年金保険料)' },
+    ])
+    await db.txOverrides.put({ txId: 'tax3', kind: 'bill' as never })
+    const all = await load()
+    for (const id of ['tax1', 'tax2', 'tax3']) {
+      const e = all.find((x) => x.id === id)!
+      expect(isSpending(e)).toBe(true)
+      expect(e.categoryId).toBe('tax')
+    }
   })
 
   it('v1のDBを開くと、追加された初期カテゴリが補われる', async () => {
@@ -200,7 +217,7 @@ describe('既存データへの反映', () => {
     const upgraded = new SpendlyDB('migrate-test')
     const cats = await upgraded.categories.toArray()
     expect(cats.find((c) => c.id === 'supermarket')?.name).toBe('食料品')
-    expect(cats.map((c) => c.id)).toEqual(expect.arrayContaining(['food', 'travel']))
+    expect(cats.map((c) => c.id)).toEqual(expect.arrayContaining(['food', 'travel', 'tax']))
     await upgraded.delete()
   })
 })

@@ -10,6 +10,7 @@
   },
   "type": "module",
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "date-fns": "^4.4.0",
     "dexie": "^4.4.6",
     "dexie-react-hooks": "^4.4.0",

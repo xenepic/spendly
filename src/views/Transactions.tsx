@@ -243,7 +243,7 @@ export function Transactions({ data, month, filter, onFilter }: Props) {
                       )}
                     </td>
                     <td className="td">
-                      {t.autoKind === 'unknown' || t.autoKind === 'bill' || t.effectiveKind !== t.autoKind ? (
+                      {t.autoKind === 'unknown' || t.effectiveKind !== t.autoKind ? (
                         <select
                           className="tag cursor-pointer appearance-none border-0 pr-[7px]"
                           aria-label="取引種別"

@@ -17,6 +17,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'digital', name: 'デジタル', color: '#7f9f95', order: 8 },
   { id: 'medical', name: '医療', color: '#a6bcb4', order: 9 },
   { id: 'furusato', name: 'ふるさと納税', color: '#d9b896', order: 10 },
+  { id: 'tax', name: '税金・公共料金', color: '#8c9c86', order: 10.5 },
   { id: 'other', name: 'その他', color: '#dce2d8', order: 11 },
   { id: UNCATEGORIZED, name: '未分類', color: '#c4cbc1', order: 99 },
 ]
@@ -26,7 +27,6 @@ export const EXTRA_COLORS = ['#4f8a6b', '#a3c4ad', '#e0b48f', '#9fb3a7', '#c7a07
 
 export const KIND_LABEL: Record<TxKind, string> = {
   payment: '支払い',
-  bill: '請求書払い・税金',
   charge: 'チャージ',
   transfer_out: '送金',
   transfer_in: '受け取り',
@@ -39,7 +39,6 @@ export const KIND_LABEL: Record<TxKind, string> = {
 
 export const KIND_ORDER: TxKind[] = [
   'payment',
-  'bill',
   'refund',
   'charge',
   'transfer_out',

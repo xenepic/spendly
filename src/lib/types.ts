@@ -1,7 +1,6 @@
 /** 取引種別。payment のみが消費支出として集計される */
 export type TxKind =
   | 'payment' // 支払い（消費支出）
-  | 'bill' // 請求書払い・税金・年金などの公的支払い
   | 'charge' // 残高チャージ
   | 'transfer_out' // 送金
   | 'transfer_in' // 受け取り

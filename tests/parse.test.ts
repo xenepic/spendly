@@ -169,7 +169,7 @@ describe('公式CSVの実際の取引内容', () => {
   it('種別を判定する（秒付きの日時にも対応）', () => {
     expect(r.errors).toEqual([])
     expect(r.rows.map((t) => t.kind)).toEqual([
-      'bill', 'bill', 'bill', 'transfer_out', 'transfer_in', 'investment', 'point', 'point', 'payment',
+      'payment', 'payment', 'payment', 'transfer_out', 'transfer_in', 'investment', 'point', 'point', 'payment',
     ])
   })
   it('支払いとポイント獲得が同じ取引番号でも別取引', () => {

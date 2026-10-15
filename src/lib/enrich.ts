@@ -31,13 +31,18 @@ export function enrich(
     const m = mMap.get(r.merchant)
     const merchantCategory = m?.manual
       ? valid(m.categoryId)
-      : (valid(r.builtinCategory) ?? valid(builtinCategoryOf(r.merchant)) ?? valid(m?.categoryId))
+      : (valid(r.builtinCategory) ??
+        valid(builtinCategoryOf(r.merchant)) ??
+        // 店舗名から判定できない請求書払い（自治体・事務局など）は税金・公共料金とする
+        (t.description.includes('請求書') ? valid('tax') : undefined) ??
+        valid(m?.categoryId))
     const overridden = valid(ov?.categoryId)
     const autoKind = classifyTx(t)
     return {
       ...t,
       autoKind,
-      effectiveKind: ov?.kind ?? autoKind,
+      // 旧バージョンで手動設定された 'bill'（請求書払い・税金）は支払いとして扱う
+      effectiveKind: ((ov?.kind as string) === 'bill' ? 'payment' : ov?.kind) ?? autoKind,
       merchant: r.merchant,
       categoryId: overridden ?? merchantCategory ?? UNCATEGORIZED,
       categoryOverridden: overridden != null,

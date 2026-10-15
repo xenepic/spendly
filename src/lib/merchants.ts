@@ -26,6 +26,8 @@ interface BuiltinRule {
  * 実際の公式CSV・旧形式CSVの取引先名を元に調整している。
  */
 const BUILTIN_RULES: BuiltinRule[] = [
+  // 税金・年金・公的保険料
+  { re: /国税|地方税|都税|道税|府税|県税|市税|区税|町税|村税|税金|納税|年金|保険料|国民健康保険/, category: 'tax' },
   // 公的機関・寺社（少額の手数料・授与品など）
   { re: /神社|神宮|寺院|大社|授与所|区役所|市役所|役場/, category: 'other' },
   // コンビニ

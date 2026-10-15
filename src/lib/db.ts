@@ -26,6 +26,12 @@ export class SpendlyDB extends Dexie {
       const existing = new Set((await table.toArray()).map((c: { id: string }) => c.id))
       await table.bulkAdd(DEFAULT_CATEGORIES.filter((c) => !existing.has(c.id)))
     })
+    // v3: 税金・公共料金カテゴリを追加
+    this.version(3).upgrade(async (tx) => {
+      const table = tx.table('categories')
+      const tax = DEFAULT_CATEGORIES.find((c) => c.id === 'tax')
+      if (tax && !(await table.get('tax'))) await table.add(tax)
+    })
     this.on('populate', (tx) => {
       tx.table('categories').bulkAdd(DEFAULT_CATEGORIES)
     })
