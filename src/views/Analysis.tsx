@@ -11,6 +11,7 @@ import { Bars } from '../components/Bars'
 import { MonthlyChart } from '../components/MonthlyChart'
 import { NoRows } from '../components/Empty'
 import { Num } from '../components/Num'
+import { TAX_CATEGORY, TaxToggle, useIncludeTax } from '../components/TaxToggle'
 
 interface Props {
   data: SpendlyData
@@ -35,7 +36,12 @@ export function Analysis({ data, month, months, scope, onScope, onCategory, onMe
   const allSpend = useMemo(() => data.txs.filter(isSpending), [data.txs])
   const spend = useMemo(() => (scope === 'month' ? allSpend.filter((t) => t.month === month) : allSpend), [allSpend, scope, month])
   const total = sum(spend)
-  const cats = useMemo(() => byCategory(spend), [spend])
+  const [includeTax, setIncludeTax] = useIncludeTax()
+  const taxAmount = sum(spend.filter((t) => t.categoryId === TAX_CATEGORY))
+  const cats = useMemo(
+    () => byCategory(includeTax ? spend : spend.filter((t) => t.categoryId !== TAX_CATEGORY)),
+    [spend, includeTax],
+  )
   const merchants = useMemo(() => {
     const rows = byMerchant(spend)
     return merchantSort === 'amount' ? rows : [...rows].sort((a, b) => b[merchantSort] - a[merchantSort])
@@ -93,8 +99,9 @@ export function Analysis({ data, month, months, scope, onScope, onCategory, onMe
         <div className="card">
           <div className="cardhead">
             <h2>カテゴリ別支出</h2>
-            <span className="caption">選択すると取引一覧に移動</span>
+            {taxAmount > 0 ? <TaxToggle checked={includeTax} onChange={setIncludeTax} /> : <span className="caption">選択すると取引一覧に移動</span>}
           </div>
+          {!includeTax && taxAmount > 0 && <p className="caption -mt-2 mb-2">税金・公共料金 {yen(taxAmount)} を除いた内訳です（構成比も税金を除いて算出）</p>}
           {cats.length ? (
             <Bars
               items={cats.map((c) => ({

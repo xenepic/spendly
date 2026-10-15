@@ -29,13 +29,14 @@ interface Props {
   rows: GroupRow[]
   catMap: Map<string, Category>
   total: number
+  totalLabel?: string
   selected: string | null
   onSelect: (id: string | null) => void
   onShowTransactions: (categoryId: string) => void
   topMerchants: (categoryId: string) => { key: string; amount: number }[]
 }
 
-export function CategoryDonut({ rows, catMap, total, selected, onSelect, onShowTransactions, topMerchants }: Props) {
+export function CategoryDonut({ rows, catMap, total, totalLabel = '総支出', selected, onSelect, onShowTransactions, topMerchants }: Props) {
   const reduced = useReducedMotion()
   const sel = rows.find((r) => r.key === selected)
   const { slices, folded } = donutSlices(rows, catMap)
@@ -72,7 +73,7 @@ export function CategoryDonut({ rows, catMap, total, selected, onSelect, onShowT
           </PieChart>
           <div className="pointer-events-none absolute inset-0 grid place-items-center text-center">
             <div>
-              <span className="block max-w-[100px] truncate text-[11px] text-[#8c9a90]">{sel ? name(sel.key) : '総支出'}</span>
+              <span className="block max-w-[100px] truncate text-[11px] text-[#8c9a90]">{sel ? name(sel.key) : totalLabel}</span>
               <strong className="text-base sm:text-xl">
                 <Num>{yen(sel ? sel.amount : total)}</Num>
               </strong>

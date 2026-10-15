@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
-  byCategory, byMerchant, categoryDeltas, isSpending, monthLabel, monthSummary, monthlyTotals, shiftMonth,
+  byCategory, byMerchant, categoryDeltas, isSpending, monthLabel, monthSummary, monthlyTotals, shiftMonth, sum,
 } from '../lib/analytics'
 import { pct, signedPct, signedYen, yen } from '../lib/format'
 import type { SpendlyData } from '../hooks/useData'
@@ -9,6 +9,7 @@ import { CategoryDonut } from '../components/CategoryDonut'
 import { MonthlyChart } from '../components/MonthlyChart'
 import { Num } from '../components/Num'
 import { NoRows } from '../components/Empty'
+import { TAX_CATEGORY, TaxToggle, useIncludeTax } from '../components/TaxToggle'
 
 interface Props {
   data: SpendlyData
@@ -32,7 +33,13 @@ export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant
   const spend = useMemo(() => data.txs.filter(isSpending), [data.txs])
   const monthSpend = useMemo(() => spend.filter((t) => t.month === month), [spend, month])
   const summary = useMemo(() => monthSummary(spend, month, new Date(), months), [spend, month, months])
-  const cats = useMemo(() => byCategory(monthSpend), [monthSpend])
+  const [includeTax, setIncludeTax] = useIncludeTax()
+  const taxAmount = sum(monthSpend.filter((t) => t.categoryId === TAX_CATEGORY))
+  const catSpend = useMemo(
+    () => (includeTax ? monthSpend : monthSpend.filter((t) => t.categoryId !== TAX_CATEGORY)),
+    [monthSpend, includeTax],
+  )
+  const cats = useMemo(() => byCategory(catSpend), [catSpend])
   const merchants = useMemo(() => byMerchant(monthSpend), [monthSpend])
   const deltas = useMemo(() => categoryDeltas(spend, month), [spend, month])
   const trend = useMemo(() => {
@@ -81,13 +88,14 @@ export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant
         <div className="card">
           <div className="cardhead">
             <h2>カテゴリ別支出</h2>
-            <span className="caption">構成比</span>
+            {taxAmount > 0 ? <TaxToggle checked={includeTax} onChange={setIncludeTax} /> : <span className="caption">構成比</span>}
           </div>
           {cats.length ? (
             <CategoryDonut
               rows={cats}
               catMap={data.catMap}
-              total={summary.total}
+              total={sum(catSpend)}
+              totalLabel={includeTax || taxAmount === 0 ? '総支出' : '税金除く'}
               selected={focused}
               onSelect={setFocus}
               onShowTransactions={onCategory}
@@ -96,6 +104,7 @@ export function Dashboard({ data, month, months, onMonth, onCategory, onMerchant
           ) : (
             <NoRows text="この月の支出はありません" />
           )}
+          {!includeTax && taxAmount > 0 && <p className="caption mt-3 mb-0">税金・公共料金 {yen(taxAmount)} を除いた内訳です</p>}
         </div>
         <div className="card">
           <div className="cardhead">
