@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { availableMonths, monthLabel } from './lib/analytics'
 import type { TxKind } from './lib/types'
 import { useSpendlyData } from './hooks/useData'
@@ -15,6 +15,21 @@ import { DataView } from './views/DataView'
 
 const SUBTITLE: Partial<Record<View, string>> = { dashboard: '支出集計', analysis: '支出分析', transactions: '取引' }
 
+/**
+ * ページがスクロールされているか。ヘッダーの縮小で高さが変わっても状態が往復しないよう、
+ * 切り替え位置に幅（ヒステリシス）を持たせる。
+ */
+function useScrolled() {
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setScrolled((prev) => (prev ? window.scrollY > 8 : window.scrollY > 64))
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+  return scrolled
+}
+
 export function App() {
   const data = useSpendlyData()
   const importer = useImporter()
@@ -25,6 +40,17 @@ export function App() {
   const [analysisScope, setAnalysisScope] = usePersistentState<'month' | 'all'>('analysisScope', 'month')
   const fileRef = useRef<HTMLInputElement>(null)
   const mainRef = useRef<HTMLElement>(null)
+  const headerRef = useRef<HTMLElement>(null)
+  const scrolled = useScrolled()
+
+  // 固定ヘッダーの高さを CSS 変数にし、他の固定要素（一括設定バーなど）をその下に配置する
+  useEffect(() => {
+    const el = headerRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => document.documentElement.style.setProperty('--header-h', `${el.offsetHeight}px`))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const months = useMemo(() => availableMonths(data.txs), [data.txs])
   const latest = months[months.length - 1] ?? null
@@ -59,14 +85,19 @@ export function App() {
     <div className="min-h-screen pb-[60px] sm:flex sm:pb-0">
       <Sidebar view={view} onNavigate={navigate} txCount={data.txs.length} badge={{ manage: unknownCount }} />
       <main ref={mainRef} className="mx-auto w-full max-w-[1390px] px-[13px] py-[21px] sm:px-[17px] sm:py-[23px] md:px-[clamp(15px,3.2vw,42px)] md:py-[30px]">
-        <header className="mb-[25px] flex items-start justify-between gap-4 sm:items-center">
+        <header
+          ref={headerRef}
+          className={`sticky top-0 z-20 mb-[25px] flex justify-between gap-4 bg-ivory transition-[padding,box-shadow] duration-200 -mx-[13px] px-[13px] sm:-mx-[17px] sm:px-[17px] md:-mx-[clamp(15px,3.2vw,42px)] md:px-[clamp(15px,3.2vw,42px)] ${
+            scrolled ? 'items-center py-2 shadow-[0_1px_0_#e5e9e1]' : 'items-start py-0 sm:items-center'
+          }`}
+        >
           <div className="min-w-0">
-            <h1 className="text-[23px]! sm:text-[25px]!">{VIEW_TITLE[view]}</h1>
-            <div className="meta">
+            <h1 className={`truncate transition-[font-size] duration-200 ${scrolled ? 'text-[18px]! sm:text-[20px]!' : 'text-[23px]! sm:text-[25px]!'}`}>{VIEW_TITLE[view]}</h1>
+            <div className={`meta ${scrolled ? 'hidden' : ''}`}>
               {needsMonth && current ? `${monthLabel(current)} ・ ${SUBTITLE[view]}` : view === 'data' ? 'PayPay取引履歴CSV' : view === 'manage' ? '店舗名の統合とカテゴリ分類' : '取引データなし'}
             </div>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className={`flex gap-2 sm:flex-row ${scrolled ? 'flex-row items-center' : 'flex-col'}`}>
             {needsMonth && hasData && (
               <div className="flex items-center gap-1" role="group" aria-label="対象月">
                 <button
@@ -104,7 +135,11 @@ export function App() {
                 </button>
               </div>
             )}
-            <button className="control control-primary" onClick={() => fileRef.current?.click()} disabled={importer.busy}>
+            <button
+              className={`control control-primary ${scrolled && needsMonth && hasData ? 'hidden sm:inline-block' : ''}`}
+              onClick={() => fileRef.current?.click()}
+              disabled={importer.busy}
+            >
               {importer.busy ? '取り込み中…' : '＋ CSV追加'}
             </button>
             <input

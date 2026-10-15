@@ -171,7 +171,7 @@ function MerchantsTab({ data, onMerchant, onCreateRule }: MerchantsTabProps) {
         </p>
       )}
       {selectedShown.length > 0 && (
-        <div className="sticky top-2 z-[5] mb-3 flex flex-wrap items-center gap-2 rounded-[9px] border border-pill-active bg-[#f3f8f2] p-3 text-xs shadow-sm motion-safe:animate-fade">
+        <div className="sticky top-[calc(var(--header-h,0px)+8px)] z-[5] mb-3 flex flex-wrap items-center gap-2 rounded-[9px] border border-pill-active bg-[#f3f8f2] p-3 text-xs shadow-sm motion-safe:animate-fade">
           <b>{selectedShown.length}店舗を選択中</b>
           <select className="select py-1.5!" aria-label="一括設定するカテゴリ" value={bulkCategory} onChange={(e) => setBulkCategory(e.target.value)}>
             <option value="">カテゴリを選択</option>
