@@ -1,0 +1,63 @@
+# Spendly
+
+PayPayの取引履歴CSVを読み込み、支出を集計・可視化するブラウザアプリです。
+CSVの解析・集計・保存はすべてブラウザ内（IndexedDB）で行い、外部へは送信しません（本番ビルドはCSPで外部通信を遮断）。
+
+## 実行
+
+```bash
+npm install
+npm run dev        # 開発サーバー http://localhost:5173
+npm run build      # 型チェック + 本番ビルド（dist/）
+npm run preview    # ビルド結果の確認
+npm test           # ユニット/統合テスト（Vitest + fake-indexeddb）
+npm run typecheck
+```
+
+## 対応CSV
+
+| 形式 | 判定 | 重複判定キー |
+|---|---|---|
+| 公式形式（PayPayアプリ「取引履歴」→CSVダウンロード、13列・ヘッダーあり） | 1行目に `取引日` `取引内容` | `取引番号` + 取引内容 + 入出金方向 |
+| 旧形式（ヘッダーなし6列：タイトル, 店舗, ステータス, 日時, 空欄, 符号付き金額） | 6列かつ4列目が `YYYY年M月D日` | 行内容のハッシュ + ファイル内の出現順 |
+
+- 文字コード: UTF-8（BOM有無）/ UTF-16LE・BE（BOM有無）/ Shift_JIS を自動判定
+- 公式形式は列名で解析するため、列順が変わっても動作します
+- 列仕様の出典: https://paypay.ne.jp/help/c0447/ , https://paypay.ne.jp/notice/20250206/f-transactionhistory/
+
+### 取引種別
+
+| 種別 | 支出集計 |
+|---|---|
+| 支払い | ✅ 含む |
+| チャージ・送金・受け取り・返金・ポイント・ポイント運用・出金 | 含まない |
+| 要確認（取引内容と入出金方向が矛盾する等、判定できないもの） | 含まない。取引一覧で手動設定可 |
+
+- 旧形式の「処理中」行は取り込み対象外（公式CSVも処理中を含まないため、完了後の行との二重計上を防ぐ）
+- 返金は支出から差し引かず、別種別として表示
+
+## データ設計（IndexedDB / Dexie）
+
+| テーブル | 内容 |
+|---|---|
+| `transactions` | CSV由来の取引。`raw` に元の行をそのまま保持。金額は正の整数（円）+ `direction` |
+| `merchants` | 正規化後の店舗名 → カテゴリ（`manual` で手動設定かを区別） |
+| `categories` | カテゴリ名・色・並び順 |
+| `merchantRules` | 取引先名 → 店舗名の統合ルール（ユーザー定義） |
+| `txOverrides` | 取引単位のカテゴリ/種別の手動上書き（元データとは分離） |
+| `importHistories` | 取り込み履歴（件数・重複・エラー） |
+
+分類は `src/lib/enrich.ts` で毎回元データから再計算します。
+カテゴリの優先順位: 取引単位の上書き > 店舗の手動設定 > 組み込みルール（`src/lib/merchants.ts`）> 未分類。
+
+## 構成
+
+```
+src/lib/csv/parsePayPay.ts  CSV解析・種別判定・安定ID
+src/lib/encoding.ts         文字コード判定
+src/lib/importer.ts         重複除外・保存
+src/lib/merchants.ts        店舗名正規化・組み込み分類ルール
+src/lib/analytics.ts        集計（月次・カテゴリ・店舗・曜日・金額帯・前月比）
+src/lib/backup.ts           JSONバックアップ・復元
+src/views/                  ダッシュボード / 詳細分析 / 取引一覧 / 店舗・カテゴリ / CSV・データ
+```

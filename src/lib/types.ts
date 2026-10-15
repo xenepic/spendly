@@ -1,0 +1,96 @@
+/** 取引種別。payment のみが消費支出として集計される */
+export type TxKind =
+  | 'payment' // 支払い（消費支出）
+  | 'charge' // 残高チャージ
+  | 'transfer_out' // 送金
+  | 'transfer_in' // 受け取り
+  | 'refund' // 返金
+  | 'point' // ポイント付与・獲得
+  | 'investment' // ポイント運用への支払い
+  | 'withdrawal' // 銀行への出金
+  | 'unknown' // 判定できない取引（要確認）
+
+export type CsvFormat = 'official' | 'legacy'
+
+/** CSV 由来の取引。raw は元の行をそのまま保持し、正規化値は raw から決定的に導出される */
+export interface Transaction {
+  id: string
+  importId: string
+  format: CsvFormat
+  /** 元CSVの列名 → 値（取り込み時のまま変更しない） */
+  raw: Record<string, string>
+  /** 取引番号（公式CSVのみ） */
+  txNumber?: string
+  /** ローカル時刻 'yyyy-MM-ddTHH:mm' */
+  occurredAt: string
+  /** 'yyyy-MM' */
+  month: string
+  /** 正の整数（円） */
+  amount: number
+  direction: 'out' | 'in'
+  /** CSV から自動判定した種別 */
+  kind: TxKind
+  /** CSV 上の取引内容（例: 支払い / 支払い完了） */
+  description: string
+  /** CSV 上の取引先名（ブランド名）。分類の入力に使う */
+  payee: string
+  /** 店舗名・支店名など（旧形式の2列目） */
+  store?: string
+  /** 取引方法（公式CSVのみ） */
+  method?: string
+}
+
+export interface Category {
+  id: string
+  name: string
+  color: string
+  order: number
+}
+
+/** 正規化後の店舗。カテゴリの割り当てを保持する */
+export interface Merchant {
+  name: string
+  categoryId: string
+  /** ユーザーが手動で設定したか */
+  manual: boolean
+}
+
+/** 取引先名 → 正規化店舗名 の統合ルール（ユーザー定義） */
+export interface MerchantRule {
+  id: string
+  pattern: string
+  match: 'contains' | 'exact'
+  merchant: string
+  createdAt: string
+}
+
+/** 取引単位の手動上書き。元データとは別に保持する */
+export interface TxOverride {
+  txId: string
+  categoryId?: string
+  kind?: TxKind
+}
+
+export interface ImportHistory {
+  id: string
+  fileName: string
+  importedAt: string
+  format: CsvFormat
+  encoding: string
+  totalRows: number
+  added: number
+  duplicates: number
+  skipped: number
+  unknown: number
+  errors: string[]
+  periodFrom?: string
+  periodTo?: string
+}
+
+/** 集計用に分類情報を付加した取引 */
+export interface EnrichedTx extends Transaction {
+  effectiveKind: TxKind
+  merchant: string
+  categoryId: string
+  categoryOverridden: boolean
+}
